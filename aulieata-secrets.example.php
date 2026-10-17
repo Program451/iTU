@@ -1,6 +1,7 @@
 <?php
 // Copy to aulieata-secrets.php OUTSIDE public/. Never commit the populated file.
 return [
+    'base_url' => 'https://your-domain.example',
     'db_host' => 'localhost',
     'db_port' => 3306,
     'db_name' => 'itu',

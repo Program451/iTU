@@ -28,7 +28,7 @@ function opsExec($pdo,$sql,$args=[]){$q=$pdo->prepare($sql);$q->execute($args);r
 function opsRecord($pdo,$uid,$kind,$data){opsExec($pdo,'INSERT INTO aulieata_records(user_id,kind,payload) VALUES(?,?,?)',[$uid,$kind,opsJson($data)]);return (int)$pdo->lastInsertId();}
 function opsGetRecord($pdo,$uid,$id,$kind,$lock=false){$r=opsOne($pdo,'SELECT * FROM aulieata_records WHERE user_id=? AND id=? AND kind=? AND archived=0'.($lock?' FOR UPDATE':''),[$uid,$id,$kind]);if(!$r)throw new RuntimeException('Запись не найдена');$r['data']=json_decode($r['payload'],true)?:[];return $r;}
 function opsPutRecord($pdo,$uid,$id,$data){opsExec($pdo,'UPDATE aulieata_records SET payload=? WHERE user_id=? AND id=?',[opsJson($data),$uid,$id]);}
-function opsRecords($pdo,$uid,$kind){$rows=opsAll($pdo,'SELECT id,payload,created_at FROM aulieata_records WHERE user_id=? AND kind=? AND archived=0 ORDER BY id DESC LIMIT 500',[$uid,$kind]);foreach($rows as &$r){$r['data']=json_decode($r['payload'],true)?:[];unset($r['payload']);}return $rows;}
+function opsRecords($pdo,$uid,$kind){$rows=opsAll($pdo,'SELECT id,payload,created_at FROM aulieata_records WHERE user_id=? AND kind=? AND archived=0 ORDER BY id DESC',[$uid,$kind]);foreach($rows as &$r){$r['data']=json_decode($r['payload'],true)?:[];unset($r['payload']);}return $rows;}
 function opsTx($pdo,$uid,$fn){$outer=$pdo->inTransaction();if(!$outer)$pdo->beginTransaction();try{if(!opsOne($pdo,'SELECT id FROM users WHERE id=? FOR UPDATE',[$uid]))throw new RuntimeException('Рабочее пространство не найдено');$v=$fn();if(!$outer)$pdo->commit();return $v;}catch(Throwable $e){if(!$outer&&$pdo->inTransaction())$pdo->rollBack();throw $e;}}
 function opsActor(){return !empty($_SESSION['staff_id'])?'staff:'.(int)$_SESSION['staff_id']:'owner';}
 function opsAudit($pdo,$uid,$kind,$target,$data,$actor=null){opsExec($pdo,'INSERT INTO ops_audit(user_id,actor,kind,target_id,payload,created_at) VALUES(?,?,?,?,?,?)',[$uid,$actor??opsActor(),$kind,$target,opsJson($data),opsNow()]);return (int)$pdo->lastInsertId();}
@@ -38,17 +38,29 @@ function opsRateLimit($pdo,$bucket,$max,$seconds){$key=hash('sha256',$bucket);$w
 function opsLink($pdo,$uid,$kind,$id=0,$rotate=false){if(!in_array($kind,['feedback','passport']))throw new RuntimeException('Неизвестная ссылка');if($rotate)opsExec($pdo,'UPDATE ops_links SET active=0 WHERE user_id=? AND kind=? AND target_id=?',[$uid,$kind,$id]);$r=opsOne($pdo,'SELECT token FROM ops_links WHERE user_id=? AND kind=? AND target_id=? AND active=1 LIMIT 1',[$uid,$kind,$id]);if($r)return $r['token'];$token=bin2hex(random_bytes(32));opsExec($pdo,'INSERT INTO ops_links(token,user_id,kind,target_id,created_at) VALUES(?,?,?,?,?)',[$token,$uid,$kind,$id,opsNow()]);return $token;}
 function opsChat($pdo,$uid,$chat){$r=opsOne($pdo,'SELECT payload FROM ops_chats WHERE user_id=? AND chat_id=?',[$uid,$chat]);return json_decode($r['payload']??'{}',true)?:[];}
 function opsSaveChat($pdo,$uid,$chat,$d){opsExec($pdo,'INSERT INTO ops_chats(user_id,chat_id,payload) VALUES(?,?,?) ON DUPLICATE KEY UPDATE payload=VALUES(payload)',[$uid,$chat,opsJson($d)]);}
-function opsQueue($pdo,$uid,$chat,$key,$text,$due=null){if(!$chat)return;opsExec($pdo,'INSERT IGNORE INTO ops_outbox(user_id,chat_id,ref_key,text,due_at,created_at) VALUES(?,?,?,?,?,?)',[$uid,$chat,$key,opsText($text,3500),$due??opsNow(),opsNow()]);}
+function opsQueue($pdo,$uid,$chat,$key,$text,$due=null){
+    if(!$chat)return;
+    // A moved appointment can return to its original slot; delivered messages stay delivered.
+    opsExec($pdo,"INSERT INTO ops_outbox(user_id,chat_id,ref_key,text,due_at,created_at) VALUES(?,?,?,?,?,?) ON DUPLICATE KEY UPDATE chat_id=IF(status='cancelled',VALUES(chat_id),chat_id),text=IF(status='cancelled',VALUES(text),text),due_at=IF(status='cancelled',VALUES(due_at),due_at),status=IF(status='cancelled','queued',status)",[$uid,$chat,$key,opsText($text,3500),$due??opsNow(),opsNow()]);
+}
 function opsStaffGate($pdo,$uid,$action,$in){
     if(empty($_SESSION['staff_id']))return 'owner';$staff=opsOne($pdo,'SELECT id,role,user_id,active FROM ops_staff WHERE id=?',[(int)$_SESSION['staff_id']]);
-    if(!$staff||!$staff['active']||(int)$staff['user_id']!==$uid){session_destroy();throw new RuntimeException('Доступ сотрудника отключён. Войдите заново.');}
+    if(!$staff||!$staff['active']||(int)$staff['user_id']!==$uid){$_SESSION=[];if(session_status()===PHP_SESSION_ACTIVE)session_destroy();throw new RuntimeException('Доступ сотрудника отключён. Войдите заново.');}
+    $_SESSION['staff_role']=$staff['role'];
     $operator=['load','ops_load','ops_quote','ops_order_create','ops_order_status','ops_resource_list','ops_slots','ops_appointment_save','ops_appointment_status','ops_ticket_update','ops_ticket_reply','ops_shift_parse','ops_shift_save','ops_shift_task','ops_passport_save','ops_passport_event','ops_transcribe','ops_budget'];
     $manager=array_merge($operator,['catalog','edit_catalog','archive_catalog','restore_catalog','resource_save','ops_resource_save','ops_campaign_save','ops_scenario','ops_supplier_parse','ops_supplier_save','ops_supplier_compare','ops_supplier_draft','ops_report','ops_import_preview','ops_import_apply','ops_undo','analyze_import','commit_smart_import','promotion_generate','promotion_publish','promotion_task']);
     if(!in_array($action,$staff['role']==='manager'?$manager:$operator,true))throw new RuntimeException('Для этого действия нужен владелец бизнеса.');return $staff['role'];
 }
 function opsFilterOutput($data){
     if(empty($_SESSION['staff_id'])||!is_array($data))return $data;
-    if(isset($data['catalog'])){foreach(['connection','jobs','automation_logs','history','agent_plans','market','my_publications','coop_members','archives','documents','expenses','offers','worker_last_seen'] as $k)$data[$k]=[];$data['knowledge']=array_values(array_filter($data['knowledge']??[],fn($r)=>($r['data']['audience']??'internal')==='public'));if(($_SESSION['staff_role']??'operator')==='operator')foreach($data['catalog'] as &$r)$r['item_cost']=null;}
+    foreach(['connection','jobs','automation_logs','history','agent_plans','market','my_publications','coop_members','archives','documents','expenses','offers','worker_last_seen','tasks'] as $key)if(array_key_exists($key,$data))$data[$key]=[];
+    if(isset($data['knowledge']))$data['knowledge']=array_values(array_filter($data['knowledge'],fn($r)=>($r['data']['audience']??'internal')==='public'));
+    foreach(['telegram','telegram_messages'] as $key)if(isset($data[$key]))$data[$key]=array_values(array_filter($data[$key],fn($r)=>empty($r['data']['owner_private'])));
+    if(($_SESSION['staff_role']??'operator')==='operator'){
+        foreach(['stock_batches','business_capacity','promotion_drafts','business_signals','suppliers','audit'] as $key)if(isset($data[$key]))$data[$key]=[];
+        $redact=function($value)use(&$redact){if(!is_array($value))return $value;foreach($value as $key=>$child){if(in_array($key,['cost','item_cost','allocations','min_margin'],true))unset($value[$key]);else $value[$key]=$redact($child);}return $value;};
+        $data=$redact($data);
+    }
     return $data;
 }
 require_once __DIR__.'/operations-commerce.php';

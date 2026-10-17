@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__.'/database.php';
-if(session_status()===PHP_SESSION_NONE){session_set_cookie_params(['httponly'=>true,'secure'=>!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off','samesite'=>'Lax']);session_start();}
+appSessionStart();
 header('Cache-Control: no-store');header('X-Content-Type-Options: nosniff');
 if(isset($_GET['logout'])){session_unset();session_destroy();header('Location: login.php');exit;}
 if(!empty($_SESSION['user_id'])){header('Location: index.php');exit;}

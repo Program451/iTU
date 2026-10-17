@@ -32,7 +32,7 @@ if(str_starts_with($action,'ops_')){
     if($action==='ops_ticket_reply')out(opsTicketReply($pdo,$uid,(int)$d['id'],$d['text']??'',$runtimeConfig));
     if($action==='ops_passport_save')out(opsPassportSave($pdo,$uid,$d));
     if($action==='ops_passport_event')out(opsPassportEvent($pdo,$uid,(int)$d['id'],$d));
-    if($action==='ops_link'){$kind=$d['kind']??'';$id=(int)($d['id']??0);if($kind==='passport')opsGetRecord($pdo,$uid,$id,'ops_passport');$token=opsLink($pdo,$uid,$kind,$id,!empty($d['rotate']));out(['url'=>'https://itudron.ru/portal.php?token='.$token]);}
+    if($action==='ops_link'){$kind=$d['kind']??'';$id=(int)($d['id']??0);if($kind==='passport')opsGetRecord($pdo,$uid,$id,'ops_passport');$token=opsLink($pdo,$uid,$kind,$id,!empty($d['rotate']));out(['url'=>appUrl('portal.php').'?token='.$token]);}
     if($action==='ops_owner_plan')out(opsOwnerPlan($pdo,$uid,$d['text']??'',$runtimeConfig));
     if($action==='ops_owner_apply')out(opsOwnerApply($pdo,$uid,(int)$d['id'],$d['selected']??[]));
     if($action==='ops_owner_code'){$code=(string)random_int(10000000,99999999);opsExec($pdo,"UPDATE aulieata_records SET archived=1 WHERE user_id=? AND kind='ops_owner_code'",[$uid]);opsRecord($pdo,$uid,'ops_owner_code',['hash'=>hash('sha256',$code),'expires'=>time()+600]);out(['code'=>$code,'expires_in'=>600]);}
@@ -41,7 +41,7 @@ if(str_starts_with($action,'ops_')){
     if($action==='ops_undo')out(opsUndo($pdo,$uid,(int)$d['id']));
     if($action==='ops_report')out(opsReport($pdo,$uid,$d['from']??localBusinessDay(),$d['to']??localBusinessDay()));
     if($action==='ops_campaign_save')out(opsTx($pdo,$uid,fn()=>opsSaveCampaign($pdo,$uid,$d)));
-    if($action==='ops_staff_invite'){$name=opsText($d['name']??'',100);$role=$d['role']??'operator';if(!$name||!in_array($role,['operator','manager']))throw new RuntimeException('Укажите имя и роль');$token=bin2hex(random_bytes(32));opsExec($pdo,'INSERT INTO ops_staff(user_id,name,role,invite_hash,invite_expires) VALUES(?,?,?,?,?)',[$uid,$name,$role,hash('sha256',$token),(new DateTimeImmutable(opsNow()))->modify('+3 days')->format('Y-m-d H:i:s')]);$id=(int)$pdo->lastInsertId();opsAudit($pdo,$uid,'staff_invite',$id,['name'=>$name,'role'=>$role]);out(['id'=>$id,'url'=>'https://itudron.ru/staff.php?invite='.$token]);}
+    if($action==='ops_staff_invite'){$name=opsText($d['name']??'',100);$role=$d['role']??'operator';if(!$name||!in_array($role,['operator','manager']))throw new RuntimeException('Укажите имя и роль');$token=bin2hex(random_bytes(32));opsExec($pdo,'INSERT INTO ops_staff(user_id,name,role,invite_hash,invite_expires) VALUES(?,?,?,?,?)',[$uid,$name,$role,hash('sha256',$token),(new DateTimeImmutable(opsNow()))->modify('+3 days')->format('Y-m-d H:i:s')]);$id=(int)$pdo->lastInsertId();opsAudit($pdo,$uid,'staff_invite',$id,['name'=>$name,'role'=>$role]);out(['id'=>$id,'url'=>appUrl('staff.php').'?invite='.$token]);}
     if($action==='ops_staff_revoke'){opsExec($pdo,'UPDATE ops_staff SET active=0,invite_hash=NULL WHERE id=? AND user_id=?',[(int)$d['id'],$uid]);opsAudit($pdo,$uid,'staff_revoke',(int)$d['id'],[]);out(['ok'=>true]);}
     throw new RuntimeException('Неизвестное действие');
 }

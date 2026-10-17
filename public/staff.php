@@ -1,5 +1,5 @@
 <?php
-ini_set('session.use_strict_mode','1');session_set_cookie_params(['secure'=>true,'httponly'=>true,'samesite'=>'Lax']);session_start();
+require_once __DIR__.'/database.php';appSessionStart();
 header('Cache-Control: no-store');header('Referrer-Policy: no-referrer');header('X-Content-Type-Options: nosniff');header('X-Robots-Tag: noindex, nofollow');
 require __DIR__.'/operations-bootstrap.php';
 function stEsc($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}

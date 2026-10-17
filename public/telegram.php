@@ -4,9 +4,7 @@ require_once __DIR__.'/database.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
-$configPath=dirname(__DIR__).'/aulieata-secrets.php';
-if(!is_file($configPath)){http_response_code(503);exit('{"ok":false}');}
-$cfg=require $configPath;
+try{$cfg=appConfig();}catch(Throwable $e){http_response_code(503);exit('{"ok":false}');}
 require_once __DIR__.'/platform.php';$connectionUid=null;
 if(isset($_GET['connection'])){try{$routeDb=appDatabase();$r=$routeDb->prepare('SELECT * FROM aulieata_connections WHERE route_key=? AND active=1');$r->execute([substr((string)$_GET['connection'],0,64)]);$c=$r->fetch();if(!$c){http_response_code(403);exit('{"ok":false}');}$connectionUid=(int)$c['user_id'];$cfg['telegram_token']=openToken($c['token_box'],$cfg);$cfg['webhook_secret']=openToken($c['secret_box'],$cfg);$routeDb=null;}catch(Throwable $e){http_response_code(503);exit('{"ok":false}');}}
 if($_SERVER['REQUEST_METHOD']!=='POST'){http_response_code(405);exit('{"ok":false}');}
@@ -22,14 +20,20 @@ if(!$msg||($msg['chat']['type']??'')!=='private'||!isset($update['update_id']))e
 function tg(string $method,array $data):array{global $cfg;$ch=curl_init('https://api.telegram.org/bot'.$cfg['telegram_token'].'/'.$method);curl_setopt_array($ch,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>20,CURLOPT_POSTFIELDS=>$data]);$raw=curl_exec($ch);$err=curl_errno($ch);curl_close($ch);$j=json_decode((string)$raw,true);if($err||!($j['ok']??false))throw new RuntimeException('Telegram delivery failed');return $j['result'];}
 function gemini(array $body,string $model,int $timeout=65):array{global $cfg;$ch=curl_init('https://generativelanguage.googleapis.com/v1beta/models/'.$model.':generateContent');curl_setopt_array($ch,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>12,CURLOPT_TIMEOUT=>$timeout,CURLOPT_HTTPHEADER=>['Content-Type: application/json','x-goog-api-key: '.$cfg['gemini_key']],CURLOPT_POSTFIELDS=>json_encode($body,JSON_UNESCAPED_UNICODE)]);$raw=curl_exec($ch);$status=curl_getinfo($ch,CURLINFO_HTTP_CODE);$err=curl_errno($ch);curl_close($ch);if(($err||in_array($status,[429,500,502,503,504]))&&$model==='gemini-3.8-flash')return gemini($body,'gemini-3.5-flash-lite',40);if(($err||in_array($status,[429,500,502,503,504]))&&$model==='gemini-3.8-flash-tts')return gemini($body,'gemini-3.8-flash-lite-tts',55);if($err||$status!==200)throw new RuntimeException('Gemini request failed: '.$status.'/'.$err);$data=json_decode((string)$raw,true);if(!is_array($data))throw new RuntimeException('Gemini response invalid');return $data;}
 function say(string $text):void{global $chat;$text=str_replace('\\n',"\n",mb_substr($text,0,4000));tg('sendMessage',['chat_id'=>$chat,'text'=>$text,'reply_markup'=>'{"remove_keyboard":true}']);}
-function remember(string $input,string $reply,string $type='text'):void{global $pdo,$owner,$chat,$incomingId;if($incomingId){$q=$pdo->prepare("UPDATE aulieata_records SET payload=? WHERE id=? AND user_id=?");$q->execute([json_encode(['name'=>'Telegram · '.$chat,'chat_id'=>(string)$chat,'text'=>$input,'reply'=>$reply,'type'=>$type,'status'=>'done'],JSON_UNESCAPED_UNICODE),$incomingId,$owner['id']]);return;}$q=$pdo->prepare("INSERT INTO aulieata_records(user_id,kind,payload) VALUES(?,'telegram',?)");$q->execute([$owner['id'],json_encode(['name'=>'Telegram · '.$chat,'chat_id'=>(string)$chat,'text'=>$input,'reply'=>$reply,'type'=>$type],JSON_UNESCAPED_UNICODE)]);}
+function remember(string $input,string $reply,string $type='text'):void{
+    global $pdo,$owner,$chat,$incomingId;
+    $existing=$incomingId?opsGetRecord($pdo,(int)$owner['id'],(int)$incomingId,'telegram')['data']:[];
+    if(preg_match('/^(?:я владелец|вход владельца|мен иесімін)\s+\d{8}/iu',trim($input)))$input='[Вход владельца]';
+    $data=array_merge($existing,['name'=>'Telegram · '.$chat,'chat_id'=>(string)$chat,'text'=>$input,'reply'=>$reply,'type'=>$type,'status'=>'done']);
+    if($incomingId)opsPutRecord($pdo,$owner['id'],$incomingId,$data);else $incomingId=opsRecord($pdo,$owner['id'],'telegram',$data);
+}
 require_once __DIR__.'/business.php';
 function markVoiceReply($status){global $pdo,$incomingId,$owner;if(!$incomingId)return;$q=$pdo->prepare('SELECT payload FROM aulieata_records WHERE id=? AND user_id=?');$q->execute([$incomingId,$owner['id']]);$d=json_decode($q->fetchColumn(),true);$d['audio_reply']=$status;$q=$pdo->prepare('UPDATE aulieata_records SET payload=? WHERE id=? AND user_id=?');$q->execute([json_encode($d,JSON_UNESCAPED_UNICODE),$incomingId,$owner['id']]);}
 $chat=(string)$msg['chat']['id'];$updateId=(string)$update['update_id'];$tmpAudio=null;$incomingId=null;$stage='initialization';
 try{
   $pdo=appDatabase();
   $q=$pdo->prepare($connectionUid?'SELECT id,biz_name,location FROM users WHERE id=?':'SELECT id,biz_name,location FROM users WHERE phone IN (?,?,?) LIMIT 1');$q->execute($connectionUid?[$connectionUid]:[$cfg['owner_phone'],'+7'.substr($cfg['owner_phone'],1),'7'.substr($cfg['owner_phone'],1)]);$owner=$q->fetch();if(!$owner)throw new RuntimeException('Business owner missing');
-  platformSchema($pdo);opsSchema($pdo);
+  require_once __DIR__.'/schema.php';appSchema($pdo);
   $pdo->exec("CREATE TABLE IF NOT EXISTS aulieata_tg_preferences (user_id INT NOT NULL,chat_id BIGINT NOT NULL,voice_mode TINYINT DEFAULT 0,PRIMARY KEY(user_id,chat_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
   $q=$pdo->prepare('INSERT IGNORE INTO aulieata_tg_events(update_id,user_id,chat_id) VALUES(?,?,?)');$q->execute([$updateId,$owner['id'],$chat]);if(!$q->rowCount()&&!$retryUpdate)exit('{"ok":true,"duplicate":true}');
   ignore_user_abort(true);@set_time_limit(150);
