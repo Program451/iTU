@@ -1,0 +1,30 @@
+# Private configuration and runtime data
+aulieata-secrets.php
+**/aulieata-secrets.php
+.env
+.env.*
+!.env.example
+aulieata-media/
+**/aulieata-media/
+*.pem
+*.key
+*.log
+*.sqlite
+*.db
+*.sql.gz
+*.dump
+# Temporary work, backups, dependency installs
+node_modules/
+vendor/
+tmp/
+output/
+*.before-*
+*.bak
+*.zip
+*.wav
+*.mp3
+*.ogg
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

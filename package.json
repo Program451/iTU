@@ -1,0 +1,12 @@
+{
+  "name": "itu-business-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PHP business workspace with Telegram and Gemini integrations",
+  "scripts": {
+    "test": "node tests/verify.mjs && node tests/verify-catalog.cjs && node tests/verify-sources.cjs"
+  },
+  "devDependencies": {
+    "php-parser": "3.7.0"
+  }
+}

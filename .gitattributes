@@ -1,0 +1,7 @@
+* text=auto
+*.php text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.sql text eol=lf
+*.md text eol=lf

@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+const source=fs.readFileSync(new URL('../public/index.php',import.meta.url),'utf8');
+const script=[...source.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(x=>x[1].replace(/<\?php[\s\S]*?\?>/g,'{}')).join('\n');
+new vm.Script(script);
+const csvFn=script.slice(script.indexOf('function parseCSV('),script.indexOf('async function importCSV('));
+const csv=vm.runInNewContext(csvFn+';parseCSV');
+assert.equal(csv('name;amount\r\n"Milk; farm";"15000,50"')[1][0],'Milk; farm');
+assert.equal(csv('name,amount\n"One ""quoted"" item",12.5')[1][0],'One "quoted" item');
+assert.equal(csv('name;amount\n"Two\nlines";10')[1][0],'Two\nlines');
+assert.throws(()=>csv('name;amount\n"Unclosed;10'));
+const cellFn=script.slice(script.indexOf('function csvCell('),script.indexOf('function exportRows('));
+const cell=vm.runInNewContext(cellFn+';csvCell');
+assert.equal(cell('=2+2'),'"\'=2+2"');
+assert.equal(cell('Safe text'),'"Safe text"');
+assert.equal(script.includes("maximumFractionDigits:2"),true);
+console.log('PASS: script syntax, quoted CSV delimiters, escaped quotes, multiline values, invalid CSV rejection, safe spreadsheet export, decimal display.');
