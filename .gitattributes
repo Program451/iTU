@@ -5,3 +5,4 @@
 *.cjs text eol=lf
 *.sql text eol=lf
 *.md text eol=lf
+*.pdf binary
