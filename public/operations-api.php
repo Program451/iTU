@@ -10,6 +10,22 @@ if(str_starts_with($action,'ops_')){
         $audit=$opsRole==='operator'?[]:$decode(opsAll($pdo,'SELECT * FROM ops_audit WHERE user_id=? ORDER BY id DESC LIMIT 100',[$uid]));
         $result=['role'=>$opsRole,'orders'=>$orders,'resources'=>$decode(opsAll($pdo,'SELECT * FROM ops_resources WHERE user_id=? ORDER BY id',[$uid])),'appointments'=>$decode(opsAll($pdo,'SELECT * FROM ops_appointments WHERE user_id=? ORDER BY starts_at DESC LIMIT 500',[$uid])),'tickets'=>opsRecords($pdo,$uid,'ops_ticket'),'shifts'=>opsRecords($pdo,$uid,'ops_shift'),'passports'=>opsRecords($pdo,$uid,'ops_passport'),'staff'=>opsAll($pdo,'SELECT id,name,role,active,login FROM ops_staff WHERE user_id=? ORDER BY id',[$uid]),'settings'=>opsSettings($pdo,$uid),'audit'=>$audit,'batches'=>$opsRole==='operator'?[]:opsBatchRows($pdo,$uid),'suppliers'=>$opsRole==='operator'?[]:opsRecords($pdo,$uid,'ops_supplier'),'campaigns'=>opsRecords($pdo,$uid,'ops_campaign'),'imports'=>$opsRole==='operator'?[]:opsRecords($pdo,$uid,'ops_import'),'plans'=>$opsRole==='owner'?opsRecords($pdo,$uid,'ops_plan'):[],'demands'=>$opsRole==='operator'?[]:opsAll($pdo,'SELECT id,source_id,reason,topic,excerpt,created_at FROM ops_demands WHERE user_id=? ORDER BY id DESC LIMIT 500',[$uid]),'outbox'=>$opsRole==='owner'?opsAll($pdo,'SELECT id,status,due_at,ref_key FROM ops_outbox WHERE user_id=? ORDER BY id DESC LIMIT 100',[$uid]):[]];out($result);
     }
+    if($action==='ops_bot_preview'){
+        $text=opsText($d['text']??'',1000);if(!$text)throw new RuntimeException('Напишите вопрос');
+        $catalog=publicCatalogData($pdo,$uid,$text);$reply=botQuickAnswer($pdo,$uid,$text,$catalog);
+        out(['text'=>$reply??'Для действий с заказом или записи используйте Telegram. Здесь проверяются только справочные ответы без создания записей. '.botUnavailable(botKk($text))]);
+    }
+    if($action==='ops_bot_health'){
+        opsRateLimit($pdo,'bot-health:'.$uid,20,3600);
+        $conn=opsOne($pdo,'SELECT token_box,route_key FROM aulieata_connections WHERE user_id=? AND active=1',[$uid]);
+        if(!$conn)throw new RuntimeException('Подключите Telegram в настройках.');
+        $info=telegramCall(openToken($conn['token_box'],$runtimeConfig),'getWebhookInfo');
+        $expected=appUrl('telegram.php?connection='.$conn['route_key']);$ok=hash_equals($expected,(string)($info['url']??''));
+        $text=$ok?'Webhook подключён к этому бизнесу.':'Webhook отличается от адреса этого бизнеса. Переподключите бота в настройках.';
+        $text.=' Ожидают доставки: '.(int)($info['pending_update_count']??0).'.';
+        if(!empty($info['last_error_date'])&&(int)$info['last_error_date']>time()-3600)$text.=' За последний час Telegram сообщил об ошибке доставки. Проверьте журнал хостинга.';
+        out(['ok'=>$ok,'text'=>$text]);
+    }
     if($action==='ops_settings_save')out(['settings'=>opsSaveSettings($pdo,$uid,$d)]);
     if($action==='ops_quote'){$q=opsQuote($pdo,$uid,$d['items']??[],$d['campaign_code']??'');unset($q['allocations'],$q['cost']);out($q);}
     if($action==='ops_order_create')out(opsCreateOrder($pdo,$uid,$d));

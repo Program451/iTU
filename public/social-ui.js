@@ -13,17 +13,17 @@ function socialStudioPage(){
         '<form id="socialForm" onsubmit="socialSaveDraft(event)"><div class="fields">'+
         socialInput('brand','Название бизнеса',BOOT.biz,70)+socialInput('headline','Заголовок карточки','',100)+socialInput('detail','Короткое описание','',160)+socialInput('price','Цена или условия','',40)+socialInput('cta','Призыв к действию',businessCta(),70)+
         '<div class="field"><label for="socialTheme">Оформление</label><select id="socialTheme"><option value="forest">Лесной зелёный</option><option value="cream">Тёплый минимализм</option><option value="night">Ночной индиго</option></select></div>'+
-        '<div class="field"><label for="socialLanguage">Язык шаблона</label><select id="socialLanguage"><option value="ru">Русский</option><option value="kk">Қазақша</option></select><small>Ваш текст сохраняется на языке ввода.</small></div>'+
+        '<div class="field"><label for="socialLayout">Композиция</label><select id="socialLayout" onchange="socialDraw()"><option value="card">Карточка с фото</option><option value="photo">Фото на весь пост</option></select></div><div class="field"><label for="socialLanguage">Язык шаблона</label><select id="socialLanguage"><option value="ru">Русский</option><option value="kk">Қазақша</option></select><small>Ваш текст сохраняется на языке ввода.</small></div>'+
         '<div class="field"><label for="socialPhoto">Фото товара или услуги</label><input id="socialPhoto" type="file" accept="image/jpeg,image/png,image/webp" onchange="socialLoadPhoto(this)"></div></div>'+
         '<p id="socialSource" class="hint"></p><div class="actions"><button type="button" class="btn light" onclick="socialBuild()">Собрать изображение и подпись</button><button type="button" class="btn light" onclick="socialPhoto=null;socialDraw()">Без фото</button></div>'+
         '<div class="field" style="margin-top:20px"><label for="socialCaption">Текст публикации</label><textarea id="socialCaption" maxlength="2200" rows="7" required oninput="socialCount()"></textarea><small id="socialCount">0 / 2200</small></div>'+
         '<div class="actions"><button type="submit" class="btn" id="socialSave">Сохранить черновик</button><button type="button" class="btn light" onclick="render()">Новый пост</button></div><p class="hint">Сохранение не публикует пост. Перед отправкой появится отдельный предпросмотр. Если меняете заголовок или фото, пересоберите изображение.</p></form></section>'+
         '<section class="card"><div class="sectiontitle"><h2>Предпросмотр</h2><span class="hint">1080 × 1350</span></div><canvas id="socialCanvas" width="1080" height="1350" aria-label="Предпросмотр изображения Instagram" style="width:100%;height:auto;border-radius:16px;background:#f4f0e6"></canvas><p class="hint">Цена, доступность и условия должны соответствовать реальному предложению. Примеры каталога помечаются на изображении и в подписи.</p><button class="btn light" type="button" onclick="socialDownload()">Скачать JPEG</button></section></div>'+
         '<section class="card" style="margin-top:24px"><div class="sectiontitle"><h2>Посты и расписание</h2><button class="btn light small" type="button" onclick="socialRefresh()">Обновить статусы</button></div><p class="hint">Время Казахстана, UTC+5. Планировщик запускается раз в минуту; подготовка в Instagram может занять несколько минут. При истечении токена отправка останавливается.</p><p><label><input type="checkbox" onchange="socialShowArchived=this.checked;socialRenderList()"> Показать архив</label></p><p class="hint">'+esc(socialWorkerStatus())+'</p><div id="socialPostList">Загружаем ваши посты…</div></section>'+
-        '<details style="margin-top:24px"><summary>Другие инструменты для текстов и идей</summary>'+aiWorkspace('marketing')+'</details>';
+        creativeHelpPanel()+'<details style="margin-top:24px"><summary>Другие инструменты для текстов и идей</summary>'+aiWorkspace('marketing')+'</details>';
 }
 function socialInput(key,label,value,max){return '<div class="field"><label for="social_'+key+'">'+label+'</label><input id="social_'+key+'" maxlength="'+max+'" value="'+esc(value)+'" '+(key==='headline'?'required':'')+'></div>';}
-function socialDesign(){return {brand:$('social_brand').value.trim(),headline:$('social_headline').value.trim(),detail:$('social_detail').value.trim(),price:$('social_price').value.trim(),cta:$('social_cta').value.trim(),theme:$('socialTheme').value,language:$('socialLanguage').value,demo:$('socialSource').dataset.demo==='1',source_label:$('socialSource').textContent};}
+function socialDesign(){return {brand:$('social_brand').value.trim(),headline:$('social_headline').value.trim(),detail:$('social_detail').value.trim(),price:$('social_price').value.trim(),cta:$('social_cta').value.trim(),layout:$('socialLayout').value,theme:$('socialTheme').value,language:$('socialLanguage').value,demo:$('socialSource').dataset.demo==='1',source_label:$('socialSource').textContent};}
 function socialUseCatalog(id){
     const item=businessCatalog().find(x=>Number(x.id)===Number(id));
     if(!item)return;
@@ -63,6 +63,12 @@ function socialDraw(){
     const canvas=$('socialCanvas');if(!canvas)return;const d=socialDesign(),ctx=canvas.getContext('2d');
     const palette={forest:['#102d23','#d7f56a','#f5f2e9','#213e33'],cream:['#f4eddf','#854c2e','#352c24','#e4d6bf'],night:['#1d2042','#c4b5fd','#f5f3ff','#343659']}[d.theme]||['#102d23','#d7f56a','#f5f2e9','#213e33'];
     const [bg,accent,fg,soft]=palette;ctx.fillStyle=bg;ctx.fillRect(0,0,1080,1350);
+    if(d.layout==='photo'&&socialPhoto){
+        const scale=Math.max(1080/socialPhoto.naturalWidth,1350/socialPhoto.naturalHeight),w=socialPhoto.naturalWidth*scale,h=socialPhoto.naturalHeight*scale;ctx.drawImage(socialPhoto,(1080-w)/2,(1350-h)/2,w,h);
+        const shade=ctx.createLinearGradient(0,0,0,1350);shade.addColorStop(0,'rgba(0,0,0,.84)');shade.addColorStop(.35,'rgba(0,0,0,.08)');shade.addColorStop(.60,'rgba(0,0,0,.05)');shade.addColorStop(1,'rgba(0,0,0,.92)');ctx.fillStyle=shade;ctx.fillRect(0,0,1080,1350);
+        socialText(ctx,d.brand,70,85,940,30,2,'#fff');socialText(ctx,d.headline,70,195,940,70,3,'#fff');socialText(ctx,d.detail,70,975,940,32,3,'#fff');socialText(ctx,d.price,70,1145,940,58,1,accent);socialText(ctx,d.cta,70,1240,940,29,2,'#fff');
+        if(d.demo){ctx.fillStyle='#ffdf80';ctx.fillRect(0,1298,1080,52);socialText(ctx,'ДЕМОНСТРАЦИЯ · НЕ РЕАЛЬНОЕ ПРЕДЛОЖЕНИЕ',45,1332,990,24,1,'#302511');}return;
+    }
     ctx.fillStyle=accent;ctx.fillRect(70,65,42,8);socialText(ctx,d.brand||'Ваш бизнес',135,82,850,30,2,fg);
     let y=180;y=socialText(ctx,d.headline||'Ваше следующее\nпредложение',70,y,940,64,3,fg)+20;
     if(d.detail)y=socialText(ctx,d.detail,70,y,940,30,3,fg)+24;
@@ -88,7 +94,7 @@ async function socialEdit(id){
     const p=socialPosts.find(x=>x.id===id);if(!p||p.status!=='draft')return;
     socialEditing=p;socialPhoto=null;socialRequestKey=crypto.randomUUID();
     for(const key of ['brand','headline','detail','price','cta'])$('social_'+key).value=p.design[key]||'';
-    $('socialTheme').value=p.design.theme||'forest';$('socialLanguage').value=p.design.language||'ru';$('socialSource').textContent=p.design.source_label||'';$('socialSource').dataset.demo=p.design.demo?'1':'0';$('socialCaption').value=p.caption;socialCount();$('socialEditorTitle').textContent='Редактирование поста';
+    $('socialLayout').value=p.design.layout||'card';$('socialTheme').value=p.design.theme||'forest';$('socialLanguage').value=p.design.language||'ru';$('socialSource').textContent=p.design.source_label||'';$('socialSource').dataset.demo=p.design.demo?'1':'0';$('socialCaption').value=p.caption;socialCount();$('socialEditorTitle').textContent='Редактирование поста';
     const img=new Image();try{await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=p.image_url;});$('socialCanvas').getContext('2d').drawImage(img,0,0,1080,1350);$('socialForm').scrollIntoView({behavior:'smooth',block:'start'});toast('Сохранённое изображение загружено. Для новой композиции добавьте фото заново.');}catch(e){toast('Не удалось загрузить изображение');}
 }
 async function socialSaveDraft(event){

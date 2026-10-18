@@ -24,4 +24,4 @@ External integrations remain dependent on credentials/permissions: WhatsApp, pay
 
 Release checks: 26 MariaDB scenarios, 7 HTTP check groups, concurrent independent PHP workers, live Gemini text/audio checks, local browser order flow, production login/API/AI plan apply and undo. Cron task 801 now runs every minute.
 
-A new real incoming Telegram message and consented reminder delivery after this release have not been repeated. Mobile-device and load testing remain pilot work. External integrations listed above are not represented as connected. See DEVELOPMENT-STATUS.md for the exact verification boundary.
+A new real incoming Telegram message was verified after the service fix on 2026-10-18: both text and audio were delivered. Consented reminder delivery has not been repeated. Mobile-device and load testing remain pilot work. External integrations listed above are not represented as connected. See DEVELOPMENT-STATUS.md for the exact verification boundary.

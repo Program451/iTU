@@ -58,7 +58,7 @@ function socialSave(PDO $pdo,int $uid,array $d): array {
     $title=trim((string)($d['title']??'')); $caption=trim((string)($d['caption']??''));
     if ($title===''||mb_strlen($title)>180||$caption===''||mb_strlen($caption)>2200) throw new RuntimeException('Заполните заголовок до 180 и подпись до 2200 символов.');
     $input=$d['design']??[]; $design=[];
-    foreach (['brand'=>70,'headline'=>100,'detail'=>160,'price'=>40,'cta'=>70,'theme'=>20,'language'=>2,'source_label'=>180] as $k=>$limit) $design[$k]=opsText($input[$k]??'',$limit);
+    foreach (['brand'=>70,'headline'=>100,'detail'=>160,'price'=>40,'cta'=>70,'layout'=>12,'theme'=>20,'language'=>2,'source_label'=>180] as $k=>$limit) $design[$k]=opsText($input[$k]??'',$limit);
     $design['demo']=!empty($input['demo']);
     if ($design['headline']==='') throw new RuntimeException('Добавьте заголовок изображения.');
     $image=null;$oldImage=null;
