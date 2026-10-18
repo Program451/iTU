@@ -5,13 +5,13 @@ function socialWorkerStatus(){const value=state.worker_last_seen;if(!value)retur
 function socialStudioPage(){
     if(opsState.role!=='owner')return aiWorkspace('marketing');
     socialEditing=null;socialPhoto=null;socialShowArchived=false;socialRequestKey=crypto.randomUUID();
-    return head('Контент-студия','От идеи до поста: карточка, подпись, проверка и публикация.')+
+    return head('Контент-студия · '+(state.profile||BOOT.profile).label,'Карточки, темы и сценарии под ваш бизнес.')+businessContentPanel()+
         '<div class="notice"><b>Карточки без платной генерации.</b> Изображение собирается из вашего текста и фото прямо в браузере. Это оформление по шаблону, а не нейросетевая генерация фотографии. Публикуются только подтверждённые вами материалы.</div>'+
         '<div class="grid twocol" style="align-items:start;margin-top:20px"><section class="card"><div class="sectiontitle"><h2 id="socialEditorTitle">Новый пост</h2><span class="badge">Instagram</span></div>'+
         '<p class="hint">Выберите товар или заполните предложение для своей сферы: услуга, свободная запись, новинка, событие.</p>'+
-        '<div class="field"><label for="socialCatalog">Взять из каталога</label><select id="socialCatalog" onchange="socialUseCatalog(this.value)"><option value="">Своя идея</option>'+(state.catalog||[]).map(x=>'<option value="'+Number(x.id)+'">'+esc(x.item_name)+(x.details?.data_mode==='demo'?' · пример':'')+'</option>').join('')+'</select></div>'+
+        '<div class="field"><label for="socialCatalog">Взять из каталога</label><select id="socialCatalog" onchange="socialUseCatalog(this.value)"><option value="">Своя идея</option>'+businessCatalog().map(x=>'<option value="'+Number(x.id)+'">'+esc(x.item_name)+(x.details?.data_mode==='demo'?' · пример':'')+'</option>').join('')+'</select></div>'+
         '<form id="socialForm" onsubmit="socialSaveDraft(event)"><div class="fields">'+
-        socialInput('brand','Название бизнеса',BOOT.biz,70)+socialInput('headline','Заголовок карточки','',100)+socialInput('detail','Короткое описание','',160)+socialInput('price','Цена или условия','',40)+socialInput('cta','Призыв к действию','Уточните детали в Direct',70)+
+        socialInput('brand','Название бизнеса',BOOT.biz,70)+socialInput('headline','Заголовок карточки','',100)+socialInput('detail','Короткое описание','',160)+socialInput('price','Цена или условия','',40)+socialInput('cta','Призыв к действию',businessCta(),70)+
         '<div class="field"><label for="socialTheme">Оформление</label><select id="socialTheme"><option value="forest">Лесной зелёный</option><option value="cream">Тёплый минимализм</option><option value="night">Ночной индиго</option></select></div>'+
         '<div class="field"><label for="socialLanguage">Язык шаблона</label><select id="socialLanguage"><option value="ru">Русский</option><option value="kk">Қазақша</option></select><small>Ваш текст сохраняется на языке ввода.</small></div>'+
         '<div class="field"><label for="socialPhoto">Фото товара или услуги</label><input id="socialPhoto" type="file" accept="image/jpeg,image/png,image/webp" onchange="socialLoadPhoto(this)"></div></div>'+
@@ -25,8 +25,9 @@ function socialStudioPage(){
 function socialInput(key,label,value,max){return '<div class="field"><label for="social_'+key+'">'+label+'</label><input id="social_'+key+'" maxlength="'+max+'" value="'+esc(value)+'" '+(key==='headline'?'required':'')+'></div>';}
 function socialDesign(){return {brand:$('social_brand').value.trim(),headline:$('social_headline').value.trim(),detail:$('social_detail').value.trim(),price:$('social_price').value.trim(),cta:$('social_cta').value.trim(),theme:$('socialTheme').value,language:$('socialLanguage').value,demo:$('socialSource').dataset.demo==='1',source_label:$('socialSource').textContent};}
 function socialUseCatalog(id){
-    const item=(state.catalog||[]).find(x=>Number(x.id)===Number(id));
-    $('socialSource').dataset.demo='0';$('socialSource').textContent='';if(!item)return;
+    const item=businessCatalog().find(x=>Number(x.id)===Number(id));
+    if(!item)return;
+    if(item.details?.availability==='out_of_stock'){toast('Позиции нет в наличии. Сначала уточните наличие в каталоге.');$('socialCatalog').value='';return;}
     $('social_headline').value=item.item_name.slice(0,100);$('social_price').value=money(item.item_price);$('social_detail').value=(item.details?.description||'').slice(0,160);
     const demo=item.details?.data_mode==='demo';$('socialSource').dataset.demo=demo?'1':'0';
     $('socialSource').textContent=demo?'Демонстрационные данные — не реальное предложение.':'Источник: '+item.item_name+'. Проверьте наличие и актуальность цены.';
@@ -102,4 +103,4 @@ function socialApprove(id){
 }
 async function socialEnqueue(event,id,version,account_id){event.preventDefault();const f=event.target,b=f.querySelector('button');b.disabled=true;try{await api('social_queue',{id,version,account_id,approved:f.elements.approved.checked,scheduled_at:f.elements.scheduled_at.value});$('modal').close();await socialRefresh();toast('Пост поставлен в очередь. Статус появится в списке.');}catch(e){toast(e.message);}finally{b.disabled=false;}}
 async function socialChangePost(id,action){try{await api('social_'+action,{id});await socialRefresh();if(socialEditing?.id===id){socialEditing=null;socialRequestKey=crypto.randomUUID();}toast(action==='archive'?'Черновик перемещён в архив':action==='restore'?'Черновик восстановлен':'Отправка отменена. Пост снова в черновиках.');}catch(e){toast(e.message);}}
-function socialMount(){if(current==='marketing'&&opsState.role==='owner'){socialDraw();socialRefresh();}}
+function socialMount(){if(current==='marketing'&&opsState.role==='owner'){const p=businessPromotion();$('socialTheme').value=p.theme;$('socialLanguage').value=p.language;socialDraw();socialRefresh();}}

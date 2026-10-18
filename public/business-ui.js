@@ -1,0 +1,70 @@
+let businessPromotionDrafts={},businessPreviewType='';
+function businessPreset(type=(state.profile||BOOT.profile).type){return BOOT.business_presets[type]||BOOT.business_presets.services;}
+function businessPromotion(type=(state.profile||BOOT.profile).type){
+    const p=state.profile||BOOT.profile,base={goal:'requests',tone:'friendly',language:'ru',theme:businessPreset(type).theme,audience:'',cta:''};
+    return {...base,...(p.promotion_by_type?.[type]||{})};
+}
+function businessCta(p=businessPromotion()){return p.cta||(p.language==='kk'?'Толық ақпарат алу үшін бізге жазыңыз':'Напишите нам, чтобы уточнить детали');}
+function businessCatalog(){const type=(state.profile||BOOT.profile).type;return (state.catalog||[]).filter(x=>!x.details?.business_type||x.details.business_type===type);}
+function businessSelect(key,label,value){return '<div class="field"><label for="bp_'+key+'">'+label+'</label><select id="bp_'+key+'">'+Object.entries(BOOT.promotion_options[key]).map(([k,v])=>'<option value="'+k+'" '+(k===value?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select></div>';}
+function businessPromotionFields(p){return '<div class="fields">'+businessSelect('goal','Цель контента',p.goal)+businessSelect('language','Язык новых материалов',p.language)+businessSelect('tone','Стиль общения',p.tone)+businessSelect('theme','Оформление новых карточек',p.theme)+'<div class="field"><label for="bp_audience">Ваша аудитория</label><input id="bp_audience" maxlength="300" value="'+esc(p.audience)+'" placeholder="'+esc(businessPreset(businessPreviewType).audience)+'"></div><div class="field"><label for="bp_cta">Призыв к действию</label><input id="bp_cta" maxlength="70" value="'+esc(p.cta)+'" placeholder="По умолчанию — написать вам и уточнить детали"></div></div>';}
+function businessReadPromotion(){return Object.fromEntries(['goal','language','tone','theme','audience','cta'].map(k=>[k,$('bp_'+k).value]));}
+function businessPreview(type){
+    businessPromotionDrafts[businessPreviewType]=businessReadPromotion();businessPreviewType=type;
+    const p=businessPromotionDrafts[type]||businessPromotion(type);$('businessPromotionFields').innerHTML=businessPromotionFields(p);$('businessPresetPreview').innerHTML=businessPresetPreview(type);
+}
+function businessPresetPreview(type){const p=businessPreset(type);return '<b>'+esc(BOOT.business_types[type])+'</b><p>Проверьте и заполните: '+esc(p.check)+'.</p><p class="hint">Темы: '+p.topics.map(esc).join(' · ')+'. Изменения начнут действовать после сохранения профиля.</p>';}
+function profileTool(){
+    const p=state.profile||BOOT.profile;businessPreviewType=p.type;businessPromotionDrafts={};
+    return '<section class="card" id="businessProfile" style="margin-bottom:24px"><h2>Настроить под свой бизнес</h2><p>Сфера определяет меню, подсказки и темы контента. Настройки контента запоминаются отдельно для каждой сферы в этом рабочем пространстве.</p><form id="businessProfileForm" onsubmit="saveProfile(event)"><div class="field"><label for="businessType">Сфера бизнеса</label><select name="type" id="businessType" onchange="businessPreview(this.value)">'+Object.entries(BOOT.business_types).map(([k,v])=>'<option value="'+k+'" '+(k===p.type?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select></div><div class="notice" id="businessPresetPreview" style="margin:18px 0">'+businessPresetPreview(p.type)+'</div><details><summary>Сведения для клиентов и Telegram-бота</summary><p class="hint">Здесь указывайте только публичные сведения. Внутренние заметки храните в базе знаний с доступом для команды.</p><div class="fields">'+textfield('description','О бизнесе: товары, услуги, аудитория','',p.description||'')+textfield('rules','Стиль ответов и правила обслуживания','',p.rules||'')+'</div></details><h3>Контент вашего бизнеса</h3><div id="businessPromotionFields">'+businessPromotionFields(businessPromotion())+'</div><p class="hint">Пустая аудитория означает, что её ещё нужно уточнить. Пример в поле не сохраняется как факт. Смена сферы сохраняет ваши данные и подключения; каталог другой сферы будет скрыт из новых подборок.</p><button class="btn" type="submit">Сохранить профиль</button><p id="businessProfileFeedback" role="status"></p></form></section>';
+}
+async function saveProfile(ev){
+    ev.preventDefault();const b=ev.target.querySelector('button[type="submit"]');b.disabled=true;
+    try{await api('profile',{data:{...formData(ev.target),promotion:businessReadPromotion()}});await reload();render();$('businessProfileFeedback').textContent='Профиль сохранён. Меню, темы и оформление обновлены.';toast('Настройки бизнеса сохранены');}
+    catch(e){$('businessProfileFeedback').textContent=e.message;}finally{b.disabled=false;}
+}
+function businessFocus(id){$(id)?.scrollIntoView({behavior:'smooth',block:'start'});}
+function businessSetupSummary(){
+    const p=state.profile||BOOT.profile,items=businessCatalog(),live=items.filter(x=>x.details?.data_mode!=='demo'),steps=[
+        ['Описание бизнеса',!!p.description,'Укажите, что предлагаете клиентам.','businessProfile'],
+        ['Правила обслуживания',!!p.rules,businessPreset().check,'businessProfile'],
+        ['Реальный каталог',live.length>0,live.length+' проверяемых позиций · '+(items.length-live.length)+' примеров','catalog'],
+        ['Наличие товаров и услуг',live.length>0&&live.every(x=>x.details?.availability&&x.details.availability!=='unknown'),'Уточните наличие перед подготовкой предложения.','catalog']
+    ];
+    return head('Настройки: '+BOOT.biz,p.label+' · '+BOOT.location)+
+        '<section class="card" style="margin-bottom:24px"><div class="sectiontitle"><h2>Подготовка бизнеса</h2><span class="badge">'+steps.filter(x=>x[1]).length+' из '+steps.length+'</span></div>'+steps.map(([title,ok,hint,target])=>'<div class="row"><div><b>'+(ok?'✓ ':'○ ')+title+'</b><small>'+esc(hint)+'</small></div>'+(target==='catalog'?'<a class="btn light small" href="#catalog">Каталог</a>':'<button class="btn light small" onclick="businessFocus(\''+target+'\')">Заполнить</button>')+'</div>').join('')+'<p class="hint">Эти шаги проверяют заполненность данных. Актуальность цен и условий подтверждает владелец.</p><div class="actions"><a class="btn" href="#marketing">Подготовить контент</a><a class="btn light" href="#operations">Открыть работу с заказами</a></div></section>'+
+        '<section class="card" style="margin-bottom:24px"><h2>Каналы этого бизнеса</h2><p>Подключения принадлежат рабочему пространству «'+esc(BOOT.biz)+'». Для другого бизнеса подключайте его собственные аккаунты.</p>'+[
+            ['Instagram',state.instagram?.check_status==='verified'?'@'+state.instagram.username+' · профиль проверен':'Нужно подключить или проверить','Карточки и очередь публикаций после вашего подтверждения.','instagramConnection'],
+            ['TikTok',state.tiktok?.connection?.check_status==='verified'?state.tiktok.connection.display_name+' · профиль проверен':'Нужно подключить или проверить','Подготовка сценариев доступна в студии. Отправка видео через API пока не включена.','tiktokConnection'],
+            ['Telegram',Number(state.connection?.active)?'@'+state.connection.username+' · подключён':'Не подключён','Ответы по каталогу и публичной базе знаний.','telegramConnection']
+        ].map(([name,status,hint,id])=>'<div class="row"><div><b>'+name+' · '+esc(status)+'</b><small>'+hint+'</small></div><button class="btn light small" onclick="businessFocus(\''+id+'\')">Настроить</button></div>').join('')+'</section>';
+}
+function businessContentTopics(){
+    const p=businessPromotion(),preset=businessPreset(),specific=preset.topics;
+    const topics=[['intro','Знакомство с бизнесом'],['product',specific[0]],['help',specific[1]],['process','За кулисами работы'],['faq','Ответ на частый вопрос'],['detail',specific[2]],['offer','Предложение из вашего каталога']];
+    const lead={awareness:'intro',requests:'offer',loyalty:'faq'}[p.goal];return [...topics.filter(x=>x[0]===lead),...topics.filter(x=>x[0]!==lead)];
+}
+function businessContentPanel(){
+    const p=businessPromotion(),profile=state.profile||BOOT.profile;
+    return '<section class="card" style="margin-top:20px"><div class="sectiontitle"><h2>7 тем для вашей сферы</h2><span class="badge">'+esc(profile.label)+'</span></div><p>'+esc(BOOT.promotion_options.goal[p.goal])+' · '+esc(BOOT.promotion_options.language[p.language])+' · '+esc(BOOT.promotion_options.tone[p.tone])+'</p><p class="hint">Заготовки для карточек, Reels и TikTok. Темы на русском; структура сценария и призыв учитывают выбранный язык. Заполните факты и снимите видео самостоятельно. Просмотр шаблона не расходует квоту ИИ.</p><div class="grid twocol">'+businessContentTopics().map(([key,title],i)=>'<div class="row"><div><b>'+String(i+1).padStart(2,'0')+' · '+esc(title)+'</b><small>'+(key==='offer'?'Выберите реальную позицию каталога':'Тема для короткого видео или карточки')+'</small></div><button class="btn light small" onclick="businessOpenTopic('+i+')">Открыть</button></div>').join('')+'</div><div class="actions"><a href="#settings">Изменить аудиторию, язык и стиль →</a></div></section>';
+}
+function businessTopicText(title){
+    const p=businessPromotion(),kk=p.language==='kk',preset=businessPreset();
+    const brief=[BOOT.biz+' · '+(state.profile||BOOT.profile).label,'Тема: '+title,'Цель: '+BOOT.promotion_options.goal[p.goal],'Аудитория: '+(p.audience||'Уточните свою аудиторию'),'Стиль: '+BOOT.promotion_options.tone[p.tone],'Проверить: '+preset.check];
+    const script=kk?['БЕЙНЕ СЦЕНАРИЙІ · 20–30 секунд','0–3 сек: [Нақты тауарды, қызметті немесе орынды көрсетіңіз.]','3–15 сек: [Жұмыс барысын және өзіңіз тексерген бір фактіні көрсетіңіз.]','15–25 сек: [Шарттарды өз деректеріңіз бойынша түсіндіріңіз.]','25–30 сек: '+businessCta(p),'ЖАРИЯЛАНЫМ МӘТІНІ','[Тақырыпты және нақты ұсынысты қазақша жазыңыз.]','[Баға мен шарттарды каталогтан тексеріп жазыңыз.]',businessCta(p)]:['СЦЕНАРИЙ ВИДЕО · 20–30 секунд','0–3 с: [Покажите товар, услугу или место, соответствующее теме.]','3–15 с: [Снимите процесс и назовите один проверенный факт.]','15–25 с: [Расскажите о составе услуги или условиях по своим данным.]','25–30 с: '+businessCta(p),'ТЕКСТ ПУБЛИКАЦИИ',title,'[Добавьте конкретные сведения о своём предложении.]','[Проверьте цену и условия по каталогу.]',businessCta(p)];
+    return brief.join('\n')+'\n\n'+script.join('\n\n');
+}
+function businessOpenTopic(i){const [key,title]=businessContentTopics()[i]||[];if(!title)return;
+    modal(title,'<p>Редактируйте заготовку. Текст в квадратных скобках нужно заменить своими фактами. Видео здесь не создаётся и не отправляется.</p><div class="field"><label for="businessTopicText">Сценарий и подпись</label><textarea id="businessTopicText" rows="14" maxlength="12000">'+esc(businessTopicText(title))+'</textarea></div><div class="actions"><button class="btn" onclick="businessSaveTopic('+i+',this)">Сохранить в документы</button><button class="btn light" onclick="businessCopyTopic()">Копировать</button><button class="btn light" onclick="businessTopicCard('+i+')">Подготовить карточку</button></div><p class="hint">'+(key==='offer'?'Для предложения выберите товар после открытия редактора. ':'')+'Для TikTok сохраните сценарий и снимите видео; публикация выполняется вручную.</p>');
+}
+async function businessSaveTopic(i,button){const title=businessContentTopics()[i]?.[1],text=$('businessTopicText').value.trim();if(!text){toast('Добавьте текст');return;}button.disabled=true;try{await api('save',{kind:'documents',data:{name:title+' · '+BOOT.biz,text,type:'Сценарий контента'}});await reload();button.textContent='Сохранено в документах';toast('Сценарий сохранён');}catch(e){toast(e.message);button.disabled=false;}}
+async function businessCopyTopic(){try{await navigator.clipboard.writeText($('businessTopicText').value);toast('Текст скопирован');}catch(e){$('businessTopicText').select();toast('Выделен текст — скопируйте его вручную');}}
+function businessTopicCard(i){
+    const [key,title]=businessContentTopics()[i]||[];if(!title)return;
+    if(($('social_headline').value||$('socialCaption').value)&&!confirm('Открыть новый пост по этой теме? Несохранённый текст в редакторе будет заменён.'))return;
+    socialEditing=null;socialPhoto=null;socialRequestKey=crypto.randomUUID();$('socialEditorTitle').textContent='Новый пост';$('socialCatalog').value='';
+    for(const k of ['headline','detail','price'])$('social_'+k).value='';$('socialSource').textContent='';$('socialSource').dataset.demo='0';$('socialCaption').value='';
+    $('social_brand').value=BOOT.biz;const p=businessPromotion();$('social_cta').value=businessCta(p);$('socialTheme').value=p.theme;$('socialLanguage').value=p.language;
+    $('social_headline').value=p.language==='ru'&&key!=='offer'?title:'';$('modal').close();socialCount();socialDraw();$('socialEditorTitle').scrollIntoView({behavior:'smooth'});
+    if(key==='offer'){$('socialCatalog').focus();toast('Выберите позицию каталога с актуальной ценой');}else if(p.language==='kk'){$('social_headline').focus();toast('Напишите заголовок по теме на қазақша');}else socialBuild();
+}
