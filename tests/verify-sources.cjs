@@ -14,6 +14,7 @@ for (const name of fs.readdirSync(publicDir)) {
   assert(!/\b\d{8,15}:[A-Za-z0-9_-]{30,}\b/.test(content), name + ': possible bot token');
   assert(!/\b(?:AIza[A-Za-z0-9_-]{30,}|gh[opusr]_[A-Za-z0-9]{25,})\b/.test(content), name + ': possible API token');
   assert(!/\bAQ\.[A-Za-z0-9_-]{30,}/.test(content), name + ': possible provider key');
+  assert(!/\bIGA[A-Za-z0-9_-]{50,}/.test(content), name + ': possible Instagram token');
 }
 let index = fs.readFileSync(path.join(publicDir, 'index.php'), 'utf8');
 index = index.replace(/<\?php readfile\(__DIR__\.'\/([^']+)'\); \?>/g,
