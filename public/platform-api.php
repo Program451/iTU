@@ -1,6 +1,7 @@
 <?php
 require __DIR__.'/operations-api.php';
 require __DIR__.'/instagram-api.php';
+require __DIR__.'/social-api.php';
 if(!isset($pdo,$uid,$in,$action)){http_response_code(404);exit;}
 require __DIR__.'/opportunities-api.php';
 require __DIR__.'/catalog-api.php';
