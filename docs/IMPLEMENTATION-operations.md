@@ -25,3 +25,12 @@ External integrations remain dependent on credentials/permissions: WhatsApp, pay
 Release checks: 26 MariaDB scenarios, 7 HTTP check groups, concurrent independent PHP workers, live Gemini text/audio checks, local browser order flow, production login/API/AI plan apply and undo. Cron task 801 now runs every minute.
 
 A new real incoming Telegram message was verified after the service fix on 2026-10-18: both text and audio were delivered. Consented reminder delivery has not been repeated. Mobile-device and load testing remain pilot work. External integrations listed above are not represented as connected. See DEVELOPMENT-STATUS.md for the exact verification boundary.
+
+
+### 2026-10-18 — free cloud image generation
+
+Implemented per-workspace Cloudflare Workers AI connections and a durable image queue, encrypted tokens, owner-only private image delivery, conservative per-business and per-account daily limits, idempotent submission, cancellation, and no automatic retry after uncertain outcomes. The content studio generates an image, keeps it in the workspace library and imports it into the existing post canvas. The existing minute cron processes the queue without an always-on user PC. Settings validate access without inference. Privacy disclosures describe the prompt transmission to Cloudflare.
+
+Production verification: Cloudflare Billing showed **Workers Free / Active** and **No payment method on file**. A scoped Workers AI Read/Edit token was connected through the site's settings; no paid subscription enabled. The scheduled worker completed one FLUX.1 Schnell request and stored a 1024 × 1024 JPEG. Download and import into the post editor succeeded. A clearly marked test draft “Начните утро со вкуса” was saved; this verification did not publish it. Daily counter moved from 5 to 4 remaining. Files backed up outside the document root as `site-before-image-generation-20261018.zip` before deployment.
+
+Checks: npm source/business checks; 26 operations integration cases; 8 social test groups; 9 service cases; 10 image cases including concurrent worker exclusion, encrypted credentials, tenant isolation, quota accounting, bad images, interrupted execution and no retries; HTTP authentication/CSRF/role/private-media checks. Image provider mocked in automated tests; real inference verified separately above. The account plan is verified manually; the restricted API token cannot detect a later switch to Workers Paid. Existing Telegram and Instagram functionality passed regression checks. TikTok remains profile connection only.

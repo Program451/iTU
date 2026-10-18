@@ -5,8 +5,8 @@ function socialWorkerStatus(){const value=state.worker_last_seen;if(!value)retur
 function socialStudioPage(){
     if(opsState.role!=='owner')return aiWorkspace('marketing');
     socialEditing=null;socialPhoto=null;socialShowArchived=false;socialRequestKey=crypto.randomUUID();
-    return head('Контент-студия · '+(state.profile||BOOT.profile).label,'Карточки, темы и сценарии под ваш бизнес.')+businessContentPanel()+
-        '<div class="notice"><b>Карточки без платной генерации.</b> Изображение собирается из вашего текста и фото прямо в браузере. Это оформление по шаблону, а не нейросетевая генерация фотографии. Публикуются только подтверждённые вами материалы.</div>'+
+    return head('Контент-студия · '+(state.profile||BOOT.profile).label,'Карточки, темы и сценарии под ваш бизнес.')+businessContentPanel()+imageAiStudio()+
+        '<div class="notice"><b>Карточки без платной генерации.</b> Изображение собирается из вашего текста и фото прямо в браузере. Для нейросетевой иллюстрации используйте генератор выше. Публикуются только подтверждённые вами материалы.</div>'+
         '<div class="grid twocol" style="align-items:start;margin-top:20px"><section class="card"><div class="sectiontitle"><h2 id="socialEditorTitle">Новый пост</h2><span class="badge">Instagram</span></div>'+
         '<p class="hint">Выберите товар или заполните предложение для своей сферы: услуга, свободная запись, новинка, событие.</p>'+
         '<div class="field"><label for="socialCatalog">Взять из каталога</label><select id="socialCatalog" onchange="socialUseCatalog(this.value)"><option value="">Своя идея</option>'+businessCatalog().map(x=>'<option value="'+Number(x.id)+'">'+esc(x.item_name)+(x.details?.data_mode==='demo'?' · пример':'')+'</option>').join('')+'</select></div>'+

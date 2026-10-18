@@ -90,3 +90,16 @@ php tests/social.php
 «Контент-студия → Красивые изображения для рекламы без платного API» готовит промпт для ручного использования бесплатных облачных лимитов Leonardo/Ideogram. Генератор не вызывается сайтом автоматически. Результат загружается как фото; композиция «Фото на весь пост» накладывает читаемый текст, цену и предложение. Указанные сервисы имеют меняющиеся бесплатные квоты. Не включайте оплату, если требуется бесплатная работа. Точное изображение товара и права на материалы проверяет владелец.
 
 Дополнительные проверки: `php tests/service.php` (изолированная MariaDB `itu_test_*`, без внешних моделей/отправок) и расширенный `php tests/http.php`.
+
+
+## Cloudflare Workers AI images (2026-10-18)
+
+In Settings, connect a Cloudflare Account ID and a narrowly scoped Workers AI Read/Edit API Token. Use **Workers Free**, verified in Cloudflare Billing → Subscriptions; the application cannot query billing with that token. A Workers Paid subscription can incur overage, including usage by unrelated applications. Do not enable it for the free-only workflow.
+
+The integration fixes the model to `@cf/black-forest-labs/flux-1-schnell`, four steps, with no paid fallback. It validates model access without performing inference, encrypts the credential with the existing server key, and exposes no token in API responses. Each business has its own connection and library. Limits: five attempted generations per business/UTC day, fifty per Cloudflare account/UTC day shared across workspaces. Reset is 05:00 Kazakhstan time. These conservative application limits do not replace Cloudflare's shared free quota.
+
+The existing minute cron runs one durable image job at a time. Do not create a browser timer or PC task for generation. Queue requests are idempotent; cancellation wins if the job has not been claimed. Disconnect/reconnect invalidates queued work. Timeouts, quota errors and interrupted processing are terminal and consume an attempt; no automatic retries. An owner may submit a fresh request after reviewing the error. Images live outside the web root in `aulieata-media/generated`, served through an owner-only endpoint. Maximum library: 200 completed/pending images. The UI shows the latest 200 jobs. Creating an image never schedules or publishes a social post.
+
+Requirements: existing PHP cURL/GD/OpenSSL, writable private media directory, MySQL and the existing `cron.php` task. New tables `image_ai_connections` and `image_ai_jobs` are additive. Rollback code can leave these tables intact. Back up files before deploying; do not put credentials or private media into a deployment archive.
+
+Validation: `php tests/images.php` (mocked model, no network), `php tests/http.php` (authentication/CSRF/staff/private image access), and `npm test`. Real model generation must also be verified on the configured hosting account.

@@ -3,6 +3,7 @@ require_once __DIR__.'/platform.php';
 require_once __DIR__.'/instagram.php';
 require_once __DIR__.'/tiktok.php';
 require_once __DIR__.'/social.php';
+require_once __DIR__.'/image-generation.php';
 function appSchema($pdo): void {
     static $ready; $ready ??= new WeakMap();
     if (isset($ready[$pdo])) return;
@@ -15,6 +16,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS aulieata_coop_members (id BIGINT UNSIGNED
     instagramSchema($pdo);
     tiktokSchema($pdo);
     socialSchema($pdo);
+    imageAiSchema($pdo);
     catalogDataSchema($pdo);
     opsSchema($pdo);
     $ready[$pdo] = true;
