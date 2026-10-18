@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/platform.php';
 require_once __DIR__.'/instagram.php';
+require_once __DIR__.'/tiktok.php';
 require_once __DIR__.'/social.php';
 function appSchema($pdo): void {
     static $ready; $ready ??= new WeakMap();
@@ -12,6 +13,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS aulieata_market (id BIGINT UNSIGNED AUTO_
 $pdo->exec("CREATE TABLE IF NOT EXISTS aulieata_coop_members (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,market_id BIGINT UNSIGNED NOT NULL,user_id INT NOT NULL,quantity DECIMAL(15,3) NOT NULL,name VARCHAR(180) NOT NULL,contact VARCHAR(180) NOT NULL,active TINYINT DEFAULT 1,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY member(market_id,user_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     platformSchema($pdo);
     instagramSchema($pdo);
+    tiktokSchema($pdo);
     socialSchema($pdo);
     catalogDataSchema($pdo);
     opsSchema($pdo);
