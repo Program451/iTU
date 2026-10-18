@@ -41,7 +41,7 @@ function botQuickAnswer($pdo,int $uid,string $text,array $catalog): ?string {
     return null;
 }
 function botLocalIntent(array $catalog,string $text): ?array {
-    if(preg_match('/сотрудник|оператор|администратор|человек|қызметкер|менеджер/iu',$text))return ['intent'=>'handoff'];
+    if(preg_match('/сотрудник|оператор|администратор|человек|жалоб|возврат|қызметкер|менеджер/iu',$text))return ['intent'=>'handoff'];
     if(preg_match('/брон|запис|жазыл/iu',$text))return ['intent'=>'booking','clarification'=>botKk($text)?'Қызметкер жазылуға көмектеседі. «Қызметкер» деп жазыңыз.':'Для записи со свободным временем напишите «Нужен сотрудник». Он увидит запрос в кабинете.'];
     if(!preg_match('/заказ|закаж|заказать|хочу купить|оформ|тапсырыс|сатып ал/iu',$text))return null;
     $matches=botMatches($catalog,$text);$exact=[];$lower=mb_strtolower($text);

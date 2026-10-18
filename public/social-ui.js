@@ -5,7 +5,7 @@ function socialWorkerStatus(){const value=state.worker_last_seen;if(!value)retur
 function socialStudioPage(){
     if(opsState.role!=='owner')return aiWorkspace('marketing');
     socialEditing=null;socialPhoto=null;socialShowArchived=false;socialRequestKey=crypto.randomUUID();
-    return head('Контент-студия · '+(state.profile||BOOT.profile).label,'Карточки, темы и сценарии под ваш бизнес.')+businessContentPanel()+imageAiStudio()+
+    return head('Контент-студия · '+(state.profile||BOOT.profile).label,'Карточки, темы и сценарии под ваш бизнес.')+ideaPanel()+businessContentPanel()+imageAiStudio()+
         '<div class="notice"><b>Карточки без платной генерации.</b> Изображение собирается из вашего текста и фото прямо в браузере. Для нейросетевой иллюстрации используйте генератор выше. Публикуются только подтверждённые вами материалы.</div>'+
         '<div class="grid twocol" style="align-items:start;margin-top:20px"><section class="card"><div class="sectiontitle"><h2 id="socialEditorTitle">Новый пост</h2><span class="badge">Instagram</span></div>'+
         '<p class="hint">Выберите товар или заполните предложение для своей сферы: услуга, свободная запись, новинка, событие.</p>'+
