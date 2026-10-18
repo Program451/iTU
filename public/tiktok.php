@@ -92,7 +92,14 @@ function tiktokBegin(PDO $pdo,int $uid,array &$session): string {
 }
 
 function tiktokTokens(array $data): array {
-    foreach(['access_token','refresh_token']as$key)if(!is_string($data[$key]??null)||!preg_match('/^[A-Za-z0-9_.~-]{10,4096}$/D',$data[$key]))throw new TikTokError('TikTok вернул неполный доступ. Подключите аккаунт заново.');
+    // TikTok tokens are opaque strings. Do not impose an identifier/base64url alphabet.
+    // Bound their size and reject whitespace, controls and non-ASCII bytes before header use.
+    foreach(['access_token','refresh_token']as$key){
+        if(!is_string($data[$key]??null)||$data[$key]==='')
+            throw new TikTokError($key==='access_token'?'TikTok не вернул токен доступа. Начните подключение заново.':'TikTok не вернул токен обновления. Начните подключение заново.');
+        if(!preg_match('/^[\x21-\x7e]{1,4096}$/D',$data[$key]))
+            throw new TikTokError('TikTok вернул неподдерживаемый формат доступа. Сообщите владельцу сайта.');
+    }
     if(!is_string($data['open_id']??null)||!preg_match('/^[A-Za-z0-9_.~-]{3,128}$/D',$data['open_id'])||strtolower((string)($data['token_type']??''))!=='bearer')throw new TikTokError('Не удалось подтвердить аккаунт TikTok.');
     $scopes=array_values(array_filter(array_map('trim',explode(',',(string)($data['scope']??'')))));
     if(!in_array('user.info.basic',$scopes,true))throw new TikTokError('Разрешите доступ к основным данным профиля TikTok.',true);

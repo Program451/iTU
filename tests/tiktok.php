@@ -14,8 +14,8 @@ function tkHttp($path,$body=null,$csrf=null,$jar='owner'){
     if($body!==null){$opts[CURLOPT_POST]=true;$opts[CURLOPT_POSTFIELDS]=$csrf===null?http_build_query($body):json_encode($body);if($csrf!==null)$opts[CURLOPT_HTTPHEADER]=['Content-Type: application/json','X-CSRF-Token: '.$csrf];}
     curl_setopt_array($ch,$opts);$raw=curl_exec($ch);$status=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);return [$status,$raw,json_decode((string)$raw,true)];
 }
-$secret=str_repeat('S',40);$payload=['access_token'=>'act.'.str_repeat('T',40),'refresh_token'=>'rft.'.str_repeat('R',40),'expires_in'=>86400,'refresh_expires_in'=>31536000,'token_type'=>'Bearer','open_id'=>'test-open-123456','scope'=>'user.info.basic'];$calls=[];
-$mock=function($op,$params=[],$token='')use(&$calls,&$payload){$calls[]=$op;return $op==='token'?$payload:($op==='profile'?['data'=>['user'=>['open_id'=>$payload['open_id'],'display_name'=>'Local Test Creator']]]:[]);};
+$secret=str_repeat('S',40);$payload=['access_token'=>'act.1!opaque/access+'.str_repeat('T',40).'=','refresh_token'=>'rft.1!opaque/refresh+'.str_repeat('R',40).'=','expires_in'=>86400,'refresh_expires_in'=>31536000,'token_type'=>'Bearer','open_id'=>'test-open-123456','scope'=>'user.info.basic'];$calls=[];
+$mock=function($op,$params=[],$token='')use(&$calls,&$payload){$calls[]=$op;if($op==='profile')tkAssert($token===$payload['access_token'],'Profile token was changed');return $op==='token'?$payload:($op==='profile'?['data'=>['user'=>['open_id'=>$payload['open_id'],'display_name'=>'Local Test Creator']]]:[]);};
 try{
     $pass='Local-Test-Only-2026';$phones=[];
     for($i=0;$i<2;$i++){$phones[]='+7'.random_int(1000000000,9999999999);opsExec($pdo,'INSERT INTO users(phone,password,biz_name,biz_category,location) VALUES(?,?,?,?,?)',[end($phones),password_hash($pass,PASSWORD_DEFAULT),'TikTok test','cafe','Test']);$ids[]=(int)$pdo->lastInsertId();}
@@ -55,7 +55,7 @@ try{
     }
     echo "PASS wrong state, expiry, session owner, staff, config change, disconnect and denial\n";
 
-    $payload['access_token']='act.'.str_repeat('N',40);$payload['refresh_token']='rft.'.str_repeat('N',40);
+    $payload['access_token']='act.2!rotated/access+'.str_repeat('N',40).'=';$payload['refresh_token']='rft.2!rotated/refresh+'.str_repeat('N',40).'=';
     opsExec($pdo,'UPDATE aulieata_tiktok_connections SET expires_at=? WHERE user_id=?',[gmdate('Y-m-d H:i:s',time()-10),$uid]);
     $failProfile=function($op,$params=[],$token='')use($mock){if($op==='profile')throw new TikTokError('Temporary outage');return $mock($op,$params,$token);};
     tkReject(fn()=>tiktokCheck($pdo,$uid,$cfg,$failProfile),'temporary profile failure');
