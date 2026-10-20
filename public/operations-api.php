@@ -25,6 +25,13 @@ if(str_starts_with($action,'ops_')){
         $text=$ok?'Webhook подключён к этому бизнесу.':'Webhook отличается от адреса этого бизнеса. Переподключите бота в настройках.';
         $text.=' Ожидают доставки: '.(int)($info['pending_update_count']??0).'.';
         if(!empty($info['last_error_date'])&&(int)$info['last_error_date']>time()-3600)$text.=' За последний час Telegram сообщил об ошибке доставки. Проверьте журнал хостинга.';
+        require_once __DIR__.'/telegram-inbox.php';tgInboxSchema($pdo);
+        $queue=opsOne($pdo,"SELECT SUM(status IN ('queued','processing')) pending,SUM(status='review') review FROM telegram_inbox WHERE user_id=?",[$uid]);
+        $text.=' В обработке на сайте: '.(int)$queue['pending'].'. Голос: '.(tgVoiceEnabled(opsSettings($pdo,$uid))?'включён':'выключен').'.';
+        if((int)$queue['review']>0)$text.=' Есть прерванные запросы: '.(int)$queue['review'].'. Проверьте переписку и заказы перед повтором.';
+        $health=opsOne($pdo,"SELECT payload FROM aulieata_records WHERE user_id=0 AND kind='worker_health' ORDER BY id DESC LIMIT 1");
+        $last=json_decode($health['payload']??'{}',true)['time']??null;
+        if(!$last||strtotime($last.' UTC')<time()-600)$text.=' Фоновый обработчик давно не запускался: проверьте планировщик хостинга.';
         out(['ok'=>$ok,'text'=>$text]);
     }
     if($action==='ops_settings_save')out(['settings'=>opsSaveSettings($pdo,$uid,$d)]);
