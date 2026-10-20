@@ -1,0 +1,27 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const {JSDOM}=require('jsdom');
+(async()=>{
+ const dom=new JSDOM('<div id="ideaBatches"></div><div id="ideaRuns"></div><button id="ideaGenerateButton"></button><div id="socialPostList"></div>',{url:'http://localhost/',runScripts:'outside-only'});
+ const w=dom.window,run=s=>vm.runInContext(s,dom.getInternalVMContext());
+ w.$=id=>w.document.getElementById(id);w.esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');w.empty=s=>s;w.current='marketing';w.opsState={role:'owner'};
+ const timers=new Map();let timerId=0;w.setTimeout=fn=>{timers.set(++timerId,fn);return timerId};w.clearTimeout=id=>timers.delete(id);
+ run(fs.readFileSync('public/i18n-catalog.js','utf8'));run(fs.readFileSync('public/i18n.js','utf8'));run(fs.readFileSync('public/social-ui.js','utf8'));run(fs.readFileSync('public/idea-ui.js','utf8'));
+ const post={id:7,version:1,title:'Кофе',caption:'Проверенный текст',status:'queued',image_url:'social-media.php?id=7',design:{}};
+ const item={id:4,batch_id:1,idea_index:0,title:'Кофе',status:'done',mode:'auto',post,image:{status:'done',image_url:'image-ai-media.php?id=2'}};
+ const data={batches:[],runs:[item],images:{connected:true},instagram:{check_status:'verified',username:'test',account_id:'178414123456'}};
+ assert.equal(run('ideaIsPending')({batches:[],runs:[item]}),true,'Finished image must keep polling its queued post');
+ let phase=structuredClone(data);w.api=async action=>action==='idea_list'?phase:{posts:phase.runs.map(r=>r.post).filter(Boolean)};
+ await w.ideaRefresh();assert(w.$('ideaRuns').querySelector('img'),'Ready result should be visible immediately');assert(w.$('socialPostList').textContent.includes('В очереди'));assert(timers.size>0,'Queued publication continues polling');
+ phase.runs[0].post.status='published';phase.runs[0].post.permalink='https://www.instagram.com/p/test/';await w.ideaRefresh();assert(w.$('ideaRuns').textContent.includes('Опубликован'));assert(w.$('ideaRuns').querySelector('a[href="https://www.instagram.com/p/test/"]'));assert.equal(timers.size,0,'Completed publication stops polling');assert(!w.$('ideaRuns').textContent.includes('будет отправлена'),'Published posts must not show a pending hint');
+ phase.runs[0].post.status='failed';phase.runs[0].post.last_error='<img src=x> Токен истёк';await w.ideaRefresh();assert(w.$('ideaRuns').textContent.includes('Токен истёк'),'Provider failure must be visible next to the selected idea');assert.equal(w.$('ideaRuns').querySelectorAll('img').length,1,'Error text is escaped');
+ const pending=[];w.api=()=>new Promise(resolve=>pending.push(resolve));
+ const old=w.socialRefresh();w.$('socialPostList').outerHTML='<div id="socialPostList">New page</div>';pending.shift()({posts:[post]});await old;assert.equal(w.$('socialPostList').textContent,'New page','Late results cannot overwrite a new screen');
+ const oldIdea=w.ideaRefresh();w.$('ideaRuns').outerHTML='<div id="ideaRuns">New idea page</div>';pending.shift()(data);await oldIdea;assert.equal(w.$('ideaRuns').textContent,'New idea page');
+ run("ideaData={batches:[],runs:[],instagram:{account_id:'178414123456'}}");
+ w.document.body.innerHTML+='<dialog id="modal"><form><input name="title" value="Кофе"><textarea name="caption">Текст</textarea><textarea name="terms"></textarea><select name="mode"><option value="auto">Auto</option></select><input name="scheduled_at"><input type="checkbox" name="approved" checked><button>Start</button></form></dialog>';
+ w.$('modal').close=()=>{};w.$('ideaRuns').scrollIntoView=()=>{};let imagesRefreshed=0,payload;
+ w.imageAiRefresh=async()=>{imagesRefreshed++};w.toast=()=>{};w.api=async(action,input)=>{if(action==='idea_start'){payload=input;return {run:item};}if(action==='idea_list')return {batches:[],runs:[{...item,status:'waiting_image',post:null}]};return {posts:[]};};
+ await w.ideaStartUI({preventDefault(){},target:w.document.querySelector('form')},1,0);assert.equal(payload.mode,'auto');assert.equal(payload.approved,true);assert.equal(payload.title,'Кофе');assert.equal(imagesRefreshed,1,'Starting an idea must start gallery refresh too');
+ w.I18n.set('kk');const card=w.ideaRunCard({...item,status:'waiting_image',post:null,image:{status:'queued'}});assert(card.includes('Кескін кезекте'));
+ dom.window.close();console.log('PASS: image progress and preview, automatic publication status, error visibility, stale response isolation and start form.');
+})().catch(e=>{console.error(e);process.exitCode=1});

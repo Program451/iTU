@@ -1,4 +1,4 @@
-let socialPosts=[],socialEditing=null,socialPhoto=null,socialRequestKey='',socialBusy=false,socialShowArchived=false;
+let socialPosts=[],socialEditing=null,socialPhoto=null,socialRequestKey='',socialBusy=false,socialShowArchived=false,socialPoll=null,socialRefreshVersion=0;
 const socialStatuses={draft:'Черновик',queued:'В очереди',processing:'Готовится в Instagram',publishing:'Отправляется',published:'Опубликован',uncertain:'Нужно проверить результат',failed:'Требует внимания',archived:'В архиве'};
 function socialDate(value){return value?new Intl.DateTimeFormat(I18n.language==='kk'?'kk-KZ':'ru-RU',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Qyzylorda'}).format(new Date(value.replace(' ','T')+'Z')):'—';}
 function socialWorkerStatus(){const value=state.worker_last_seen;if(!value)return I18n.t('Планировщик ещё не подтвердил запуск.');const age=Date.now()-Date.parse(value.replace(' ','T')+'Z');return I18n.t(age>=-120000&&age<180000?'Планировщик активен.':'Планировщик давно не подтверждал запуск — проверьте cron на хостинге.')+' '+I18n.t('Последний запуск:')+' '+socialDate(value)+' · UTC+5.';}
@@ -83,7 +83,11 @@ function socialDraw(){
 }
 function socialDownload(){const a=document.createElement('a');a.href=$('socialCanvas').toDataURL('image/jpeg',0.9);a.download='instagram-post.jpg';a.click();}
 async function socialRefresh(){
-    try{socialPosts=(await api('social_list')).posts;socialRenderList();}catch(e){if($('socialPostList'))$('socialPostList').textContent=e.message;}
+    clearTimeout(socialPoll);const target=$('socialPostList'),version=++socialRefreshVersion;if(!target||current!=='marketing')return;
+    try{const data=await api('social_list');if(version!==socialRefreshVersion||!target.isConnected||$('socialPostList')!==target)return;
+        socialPosts=data.posts;socialRenderList();
+        if(socialPosts.some(p=>['queued','processing','publishing'].includes(p.status)))socialPoll=setTimeout(socialRefresh,8000);
+    }catch(e){if(version===socialRefreshVersion&&target.isConnected)target.textContent=e.message;}
 }
 function socialRenderList(){
     const target=$('socialPostList');if(!target)return;
@@ -109,4 +113,4 @@ function socialApprove(id){
 }
 async function socialEnqueue(event,id,version,account_id){event.preventDefault();const f=event.target,b=f.querySelector('button');b.disabled=true;try{await api('social_queue',{id,version,account_id,approved:f.elements.approved.checked,scheduled_at:f.elements.scheduled_at.value});$('modal').close();await socialRefresh();toast('Пост поставлен в очередь. Статус появится в списке.');}catch(e){toast(e.message);}finally{b.disabled=false;}}
 async function socialChangePost(id,action){try{await api('social_'+action,{id});await socialRefresh();if(socialEditing?.id===id){socialEditing=null;socialRequestKey=crypto.randomUUID();}toast(action==='archive'?'Черновик перемещён в архив':action==='restore'?'Черновик восстановлен':'Отправка отменена. Пост снова в черновиках.');}catch(e){toast(e.message);}}
-function socialMount(){if(current==='marketing'&&opsState.role==='owner'){const p=businessPromotion();$('socialTheme').value=p.theme;$('socialLanguage').value=p.language;socialDraw();socialRefresh();}}
+function socialMount(){clearTimeout(socialPoll);socialRefreshVersion++;if(current==='marketing'&&opsState.role==='owner'){const p=businessPromotion();$('socialTheme').value=p.theme;$('socialLanguage').value=p.language;socialDraw();socialRefresh();}}

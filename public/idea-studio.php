@@ -44,8 +44,11 @@ function ideaGenerate(PDO $pdo,int $uid,array $in,array $cfg,?callable $request=
     return ideaBatch($pdo,$uid,$id);
 }
 function ideaRunSafe(PDO $pdo,array $r): array {
-    $p=json_decode($r['payload'],true)?:[];return ['id'=>(int)$r['id'],'batch_id'=>(int)$r['batch_id'],'idea_index'=>(int)$r['idea_index'],
+    $p=json_decode($r['payload'],true)?:[];
+    $image=opsOne($pdo,'SELECT * FROM image_ai_jobs WHERE id=? AND user_id=?',[$r['image_id'],$r['user_id']]);
+    return ['id'=>(int)$r['id'],'batch_id'=>(int)$r['batch_id'],'idea_index'=>(int)$r['idea_index'],
         'title'=>$p['title']??'','mode'=>$p['mode']??'draft','status'=>$r['status'],'error'=>$r['error_text'],'created_at'=>$r['created_at'],
+        'image'=>$image?imageAiSafe($image):null,
         'post'=>$r['post_id']?socialSafe(socialRow($pdo,(int)$r['user_id'],(int)$r['post_id'])):null];
 }
 function ideaList(PDO $pdo,int $uid): array {
