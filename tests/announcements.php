@@ -13,6 +13,9 @@ function annLogin($phone,$password,$jar='user',$admin=false){$path='login.php';[
 function annApi($action,$data=[],$jar='user',$token=null){global $tokens;return annHttp('announcement-api.php',['action'=>$action]+$data,$jar,$token??$tokens[$jar]);}
 function annDraft($kind,$media){global $ids;[$code,,$r]=annApi('admin_save',['kind'=>$kind,'title_ru'=>'Проверка <script>alert(1)</script>','title_kk'=>'Тексеру','body_ru'=>'Текст администратора','body_kk'=>'Әкімші мәтіні','version'=>'test','media_id'=>$media],'admin');checkAnnouncement($code===200,'Save draft');$ids[]=$r['id'];return $r['id'];}
 try {
+ checkAnnouncement(announcementUploadLimit('50M','50M')===49*1048576,'Hosting multipart limit');
+ checkAnnouncement(announcementUploadLimit('100M','105M')===100*1048576,'Application upload ceiling');
+ checkAnnouncement(announcementUploadLimit('1G','0')===100*1048576,'Unlimited PHP post ceiling');
  $q=$pdo->prepare('INSERT INTO users(phone,password,biz_name,biz_category,location,created_at) VALUES(?,?,?,?,?,DATE_SUB(NOW(),INTERVAL 1 DAY))');$q->execute([$phone,password_hash($pass,PASSWORD_DEFAULT),'Existing account','services','Тараз']);$old=(int)$pdo->lastInsertId();$userIds[]=$old;
  $q=$pdo->prepare('INSERT INTO app_admins(phone,password_hash,name) VALUES(?,?,?)');$q->execute([$adminPhone,password_hash($pass,PASSWORD_DEFAULT),'Fixture admin']);$adminId=(int)$pdo->lastInsertId();
  $tokens['user']=annLogin($phone,$pass);$tokens['admin']=annLogin($adminPhone,$pass,'admin',true);

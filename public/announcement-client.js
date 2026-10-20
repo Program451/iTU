@@ -4,7 +4,7 @@ const announcementErrors = {
  auth_required:'Войдите в аккаунт заново.',session_expired:'Сессия обновилась. Перезагрузите страницу.',admin_required:'Доступно только администратору.',
  announcement_invalid:'Проверьте поля объявления.',announcement_required:'Заполните заголовок и текст на русском.',announcement_bilingual:'Перед публикацией заполните русский и казахский тексты.',
  announcement_immutable:'Опубликованный текст нельзя изменить. Создайте копию.',announcement_unavailable:'Объявление больше недоступно.',announcement_video_required:'Перед публикацией загрузите видео.',
- video_unavailable:'Видео не найдено.',video_upload_failed:'Видео не загрузилось. Проверьте размер файла и лимиты сервера.',video_too_large:'Размер видео должен быть не больше 100 МБ.',video_invalid:'Выберите видео MP4 или WebM.',video_storage_full:'Хранилище видео заполнено. Обратитесь к владельцу сервера.',profile_invalid:'Укажите имя длиной до 100 символов.',service_unavailable:'Сервис временно недоступен. Повторите позже.',request_invalid:'Некорректный запрос.',method_invalid:'Некорректный запрос.'
+ video_unavailable:'Видео не найдено.',video_upload_failed:'Видео не загрузилось. Проверьте размер файла и лимиты сервера.',video_too_large:'Размер видео превышает допустимый лимит сервера.',video_invalid:'Выберите видео MP4 или WebM.',video_storage_full:'Хранилище видео заполнено. Обратитесь к владельцу сервера.',profile_invalid:'Укажите имя длиной до 100 символов.',service_unavailable:'Сервис временно недоступен. Повторите позже.',request_invalid:'Некорректный запрос.',method_invalid:'Некорректный запрос.'
 };
 function announcementText(text){return window.I18n?I18n.t(text):text;}
 async function announcementRequest(action,data={},file=null){

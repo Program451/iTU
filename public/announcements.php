@@ -127,12 +127,24 @@ function announcementMediaDirectory(): string {
     return $resolved;
 }
 
+function announcementUploadLimit(?string $upload = null, ?string $post = null): int {
+    $bytes = static function(string $value): int {
+        $value = trim($value);
+        $number = (float)$value;
+        if ($number <= 0) return PHP_INT_MAX;
+        $unit = strtolower(substr($value,-1));
+        return (int)min(PHP_INT_MAX, $number * match($unit) {'g'=>1073741824,'m'=>1048576,'k'=>1024,default=>1});
+    };
+    // Reserve room for the multipart envelope and display an honest whole-MB limit.
+    return max(0,(int)floor(min(100*1048576,$bytes($upload ?? ini_get('upload_max_filesize')),$bytes($post ?? ini_get('post_max_size'))-65536)/1048576)*1048576);
+}
+
 function announcementUpload(PDO $pdo, int $admin, array $file): array {
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) throw new DomainException('video_upload_failed');
     $tmp = $file['tmp_name'] ?? '';
     if (!is_uploaded_file($tmp)) throw new DomainException('video_invalid');
     $size = filesize($tmp);
-    if ($size === false || $size < 32 || $size > 100*1024*1024) throw new DomainException('video_too_large');
+    if ($size === false || $size < 32 || $size > announcementUploadLimit()) throw new DomainException('video_too_large');
     $mime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp);
     $extension = ['video/mp4'=>'mp4','video/webm'=>'webm'][$mime] ?? null;
     if (!$extension) throw new DomainException('video_invalid');
