@@ -22,7 +22,7 @@ function botCatalogText(array $items,bool $kk=false): string {
     foreach(array_slice($items,0,14) as $item){
         $isDemo=($item['data_mode']??'demo')==='demo';$demo=$demo||$isDemo;
         $status=($kk?['available'=>'қолжетімді','out_of_stock'=>'жоқ','preorder'=>'алдын ала тапсырыс','unknown'=>'қолда барын нақтылау керек']:['available'=>'доступно','out_of_stock'=>'нет в наличии','preorder'=>'под заказ','unknown'=>'наличие уточняется'])[$item['availability']??'unknown']??'';
-        $lines[]=($isDemo?($kk?'[Үлгі] ':'[Пример] '):'').$item['item_name'].' — '.number_format((float)$item['item_price'],2,',',' ').' ₸ / '.($item['unit']??'шт.').' · '.$status;
+        $lines[]=($isDemo?($kk?'[Үлгі] ':'[Пример] '):'').$item['item_name'].' — '.number_format((float)$item['item_price'],2,',',' ').' ₸'.(!empty($item['unit'])?' / '.$item['unit']:'').' · '.$status;
     }
     if($demo)$lines[]=$kk?'Үлгі бағалар мен қолжетімділік нақты ұсыныс емес.':'Демонстрационные цены и наличие — примеры, а не реальное предложение.';
     return implode("\n",$lines);

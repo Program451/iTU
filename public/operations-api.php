@@ -39,7 +39,7 @@ if(str_starts_with($action,'ops_')){
     if($action==='ops_order_create')out(opsCreateOrder($pdo,$uid,$d));
     if($action==='ops_order_status'){if(($d['status']??'')==='refunded'&&$opsRole==='operator')throw new RuntimeException('Возврат отмечает руководитель');out(opsOrderStatus($pdo,$uid,(int)$d['id'],$d['status']??'',!empty($d['restock'])));}
     if($action==='ops_resource_save')out(opsSaveResource($pdo,$uid,(int)($d['id']??0),$d));
-    if($action==='ops_slots')out(['slots'=>opsSlots($pdo,$uid,(int)$d['resource_id'],(int)$d['item_id'],$d['date']??'')]);
+    if($action==='ops_slots')out(['slots'=>opsSlots($pdo,$uid,(int)$d['resource_id'],(int)$d['item_id'],$d['date']??'',(int)($d['appointment_id']??0))]);
     if($action==='ops_appointment_save')out(opsAppointmentSave($pdo,$uid,$d));
     if($action==='ops_appointment_status')out(opsAppointmentStatus($pdo,$uid,(int)$d['id'],$d['status']??''));
     if($action==='ops_transcribe')out(['text'=>opsTranscribe($runtimeConfig,$d['audio']??'')]);
