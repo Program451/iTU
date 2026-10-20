@@ -5,7 +5,8 @@ function lessonResponse(array $body,int $code=200): void {http_response_code($co
 try{
     if(empty($_SESSION['user_id'])&&empty($_SESSION['admin_id']))lessonResponse(['error'=>'Войдите в аккаунт.'],401);
     if($_SERVER['REQUEST_METHOD']!=='POST')lessonResponse(['error'=>'Метод недоступен.'],405);
-    if(empty($_SESSION['csrf'])||!hash_equals($_SESSION['csrf'],$_SERVER['HTTP_X_CSRF_TOKEN']??''))lessonResponse(['error'=>'Обновите страницу и повторите действие.'],403);
+    if(isset($_SERVER['HTTP_X_ADMIN_ID'])&&(string)$_SERVER['HTTP_X_ADMIN_ID']!==(string)($_SESSION['admin_id']??''))lessonResponse(['error'=>'В другой вкладке открыт другой аккаунт. Войдите в этот аккаунт администратора в новой вкладке и повторите действие. Тексты в этой форме сохранены.'],409);
+    if(empty($_SESSION['csrf'])||!hash_equals($_SESSION['csrf'],$_SERVER['HTTP_X_CSRF_TOKEN']??''))lessonResponse(['error'=>'Обновите страницу и повторите действие.','code'=>'session_expired'],403);
     $in=json_decode(file_get_contents('php://input'),true);if(!is_array($in))lessonResponse(['error'=>'Проверьте запрос.'],400);
     $pdo=appDatabase();lessonSchema($pdo);$action=$in['action']??'';$admin=announcementAdmin($pdo);
     if(str_starts_with($action,'admin_')){

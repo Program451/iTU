@@ -1,9 +1,17 @@
 const lessonTopics={general:'Начало работы',cloudflare:'Cloudflare · изображения',gemini:'Gemini · помощник',instagram:'Instagram',tiktok:'TikTok',telegram:'Telegram'};
 let lessonItems=[],lessonFilter='all',lessonQuery='',lessonRequestVersion=0;
 async function lessonRequest(action,data={}){
+    const admin=typeof ADMIN_BOOT!=='undefined'&&action.startsWith('admin_');
+    if(admin)await announcementAdminSession();
+    return lessonSend(action,data,admin);
+}
+async function lessonSend(action,data,admin,retried=false){
     const csrf=typeof ADMIN_BOOT!=='undefined'?ADMIN_BOOT.csrf:BOOT.csrf;
-    const response=await fetch('lessons-api.php',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({action,...data})});
+    const headers={'Content-Type':'application/json','X-CSRF-Token':csrf};
+    if(admin)headers['X-Admin-Id']=String(ADMIN_BOOT.profile.id);
+    const response=await fetch('lessons-api.php',{method:'POST',headers,body:JSON.stringify({action,...data})});
     let result;try{result=await response.json();}catch(_){throw Error(I18n.t('Не удалось загрузить уроки. Попробуйте позже.'));}
+    if(admin&&!retried&&response.status===403&&result.code==='session_expired'){await announcementAdminSession();return lessonSend(action,data,admin,true);}
     if(!response.ok||result.error)throw Error(I18n.t(result.error||'Не удалось загрузить уроки. Попробуйте позже.'));return result;
 }
 function lessonText(row,key){return row[key+'_'+I18n.language]||row[key+'_ru']||'';}

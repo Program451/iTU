@@ -2,17 +2,43 @@
 const announcementEscape = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const announcementErrors = {
  auth_required:'Войдите в аккаунт заново.',session_expired:'Сессия обновилась. Перезагрузите страницу.',admin_required:'Доступно только администратору.',
+ admin_session_changed:'В другой вкладке открыт другой аккаунт. Войдите в этот аккаунт администратора в новой вкладке и повторите действие. Тексты в этой форме сохранены.',
  announcement_invalid:'Проверьте поля объявления.',announcement_required:'Заполните заголовок и текст на русском.',announcement_bilingual:'Перед публикацией заполните русский и казахский тексты.',
  announcement_immutable:'Опубликованный текст нельзя изменить. Создайте копию.',announcement_unavailable:'Объявление больше недоступно.',announcement_video_required:'Перед публикацией загрузите видео.',
  video_unavailable:'Видео не найдено.',video_upload_failed:'Видео не загрузилось. Проверьте размер файла и лимиты сервера.',video_too_large:'Размер видео превышает допустимый лимит сервера.',video_invalid:'Выберите видео MP4 или WebM.',video_storage_full:'Хранилище видео заполнено. Обратитесь к владельцу сервера.',profile_invalid:'Укажите имя длиной до 100 символов.',service_unavailable:'Сервис временно недоступен. Повторите позже.',request_invalid:'Некорректный запрос.',method_invalid:'Некорректный запрос.'
 };
 function announcementText(text){return window.I18n?I18n.t(text):text;}
+let announcementSessionPending=null;
+async function announcementAdminSession(){
+ if(typeof ADMIN_BOOT==='undefined')return;
+ if(!announcementSessionPending)announcementSessionPending=(async()=>{
+  const response=await fetch('announcement-api.php?session=admin',{cache:'no-store',headers:{'X-Requested-With':'XMLHttpRequest','X-Admin-Id':String(ADMIN_BOOT.profile.id)}});
+  let result;try{result=await response.json();}catch{throw Error(announcementText(announcementErrors.service_unavailable));}
+  if(!response.ok||result.error)throw Error(announcementText(announcementErrors[result.error]||announcementErrors.service_unavailable));
+  if(Number(result.admin_id)!==Number(ADMIN_BOOT.profile.id)||!/^[a-f0-9]{64}$/.test(result.csrf))throw Error(announcementText(announcementErrors.admin_session_changed));
+  ADMIN_BOOT.csrf=result.csrf;ADMIN_BOOT.upload_limit=Number(result.upload_limit);
+ })();
+ try{await announcementSessionPending;}finally{announcementSessionPending=null;}
+}
 async function announcementRequest(action,data={},file=null){
+ const admin=typeof ADMIN_BOOT!=='undefined'&&action.startsWith('admin_');
+ if(admin)await announcementAdminSession();
+ if(admin&&file&&file.size>Number(ADMIN_BOOT.upload_limit))throw Error(announcementText(announcementErrors.video_too_large));
+ return announcementSend(action,data,file,admin);
+}
+async function announcementSend(action,data,file,admin,retried=false){
  const csrf=typeof ADMIN_BOOT!=='undefined'?ADMIN_BOOT.csrf:BOOT.csrf;
  let body,headers={'X-CSRF-Token':csrf};
+ if(admin)headers['X-Admin-Id']=String(ADMIN_BOOT.profile.id);
  if(file){body=new FormData();body.append('action',action);body.append('video',file);}else{headers['Content-Type']='application/json';body=JSON.stringify({action,...data});}
  const response=await fetch('announcement-api.php',{method:'POST',headers,body});let result;
+ if(response.status===413)throw Error(announcementText(announcementErrors.video_too_large));
  try{result=await response.json();}catch{throw Error(announcementText('Сервер вернул неверный ответ. Обновите страницу.'));}
+ // An explicit CSRF rejection happens before any write. Retry that case once,
+ // never a network failure or an unknown response that may have saved the file.
+ if(admin&&!retried&&response.status===403&&result.error==='session_expired'){
+  await announcementAdminSession();return announcementSend(action,data,file,admin,true);
+ }
  if(!response.ok||result.error)throw Error(announcementText(announcementErrors[result.error]||announcementErrors.service_unavailable));return result;
 }
 function announcementMarkup(item,{preview=false,pending=false}={}){

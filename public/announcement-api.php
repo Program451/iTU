@@ -9,9 +9,25 @@ function announcementResponse(array $body, int $code = 200): void {
 }
 try {
     if (empty($_SESSION['user_id']) && empty($_SESSION['admin_id'])) announcementResponse(['error'=>'auth_required'],401);
+    // Refresh a stale tab only for the same, still-active administrator. The
+    // custom header requires a CORS preflight; this endpoint grants no CORS access.
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['session'] ?? '') === 'admin') {
+        if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'XMLHttpRequest' ||
+            ($_SERVER['HTTP_SEC_FETCH_SITE'] ?? '') === 'cross-site') announcementResponse(['error'=>'request_invalid'],403);
+        if (empty($_SESSION['admin_id']) || (string)($_SERVER['HTTP_X_ADMIN_ID'] ?? '') !== (string)$_SESSION['admin_id'])
+            announcementResponse(['error'=>'admin_session_changed'],409);
+        $pdo = appDatabase(); $admin = announcementAdmin($pdo);
+        if (!$admin) announcementResponse(['error'=>'admin_required'],403);
+        $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
+        announcementResponse(['csrf'=>$_SESSION['csrf'],'admin_id'=>(int)$admin['id'],'upload_limit'=>announcementUploadLimit()]);
+    }
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') announcementResponse(['error'=>'method_invalid'],405);
+    if (isset($_SERVER['HTTP_X_ADMIN_ID']) && (string)$_SERVER['HTTP_X_ADMIN_ID'] !== (string)($_SESSION['admin_id'] ?? ''))
+        announcementResponse(['error'=>'admin_session_changed'],409);
     if (empty($_SESSION['csrf']) || !hash_equals($_SESSION['csrf'],$_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')) announcementResponse(['error'=>'session_expired'],403);
     $multipart = str_starts_with($_SERVER['CONTENT_TYPE'] ?? '','multipart/form-data');
+    if ($multipart && empty($_POST) && empty($_FILES) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > announcementUploadLimit())
+        announcementResponse(['error'=>'video_too_large'],413);
     $input = $multipart ? $_POST : json_decode(file_get_contents('php://input'),true);
     if (!is_array($input)) announcementResponse(['error'=>'request_invalid'],400);
     $action = $input['action'] ?? '';
