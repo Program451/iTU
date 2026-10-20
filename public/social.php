@@ -123,6 +123,7 @@ function socialQueue(PDO $pdo,int $uid,array $d): array {
 function socialChange(PDO $pdo,int $uid,int $id,string $action): array {
     return socialLock($pdo,$id,fn()=>opsTx($pdo,$uid,function()use($pdo,$uid,$id,$action){
         $r=socialRow($pdo,$uid,$id,true);
+        if($action==='archive'&&opsOne($pdo,"SELECT id FROM tiktok_publications WHERE user_id=? AND post_id=? AND status IN ('queued','sending','processing','uncertain')",[$uid,$id]))throw new RuntimeException('Сначала отмените отправку в TikTok или дождитесь её результата.');
         if ($action==='archive'&&$r['status']==='draft') $status='archived';
         elseif ($action==='restore'&&$r['status']==='archived') $status='draft';
         elseif ($action==='cancel'&&in_array($r['status'],['queued','processing','failed'],true)) $status='draft';

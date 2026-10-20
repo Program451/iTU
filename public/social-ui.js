@@ -107,5 +107,5 @@ async function socialSaveDraft(event){
     catch(e){toast(e.message);}finally{socialBusy=false;if($('socialSave'))$('socialSave').disabled=false;}
 }
 function socialApprove(id){return publicationReview(id);}
-async function socialChangePost(id,action){try{await api('social_'+action,{id});await socialRefresh();if(socialEditing?.id===id){socialEditing=null;socialRequestKey=crypto.randomUUID();}toast(action==='archive'?'Черновик перемещён в архив':action==='restore'?'Черновик восстановлен':'Отправка отменена. Пост снова в черновиках.');}catch(e){toast(e.message);}}
+async function socialChangePost(id,action){try{await api('social_'+action,{id});await socialRefresh();if(socialEditing?.id===id){socialEditing=null;socialRequestKey=crypto.randomUUID();}toast(action==='archive'?'Черновик перемещён в архив':action==='restore'?'Черновик восстановлен':'Отправка в Instagram отменена. Пост снова в черновиках.');}catch(e){toast(e.message);}}
 function socialMount(){clearTimeout(socialPoll);socialRefreshVersion++;if(current==='marketing'&&opsState.role==='owner'){const p=businessPromotion();$('socialTheme').value=p.theme;$('socialLanguage').value=p.language;socialDraw();socialRefresh();}}
