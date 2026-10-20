@@ -3,7 +3,7 @@ const {JSDOM}=require('jsdom');
 (async()=>{
  const dom=new JSDOM('<form><input name="date" value="2026-10-21"><input name="starts_at"><input name="item_id" value="1"><input name="resource_id" value="2"><div id="opsSlots"></div></form>',{runScripts:'outside-only'});
  const w=dom.window,form=w.document.querySelector('form'),fields=form.elements;
- const pending=[];w.api=()=>new Promise(resolve=>pending.push(resolve));w.formData=f=>Object.fromEntries(new w.FormData(f));w.esc=String;w.toast=message=>{throw Error(message)};w.I18n={html:s=>s};
+ const pending=[];w.api=()=>new Promise(resolve=>pending.push(resolve));w.formData=f=>Object.fromEntries(new w.FormData(f));w.esc=String;w.toast=message=>{throw Error(message)};w.I18n={html:s=>s,t:s=>s};
  vm.runInContext(fs.readFileSync('public/operations-ui.js','utf8'),dom.getInternalVMContext());
  const reply=time=>({slots:[{starts_at:'2026-10-21 '+time+':00'}]});
  let load=w.opsFindSlots(form);pending.shift()(reply('10:00'));await load;

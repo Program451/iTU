@@ -49,7 +49,7 @@ function ideaRunSafe(PDO $pdo,array $r): array {
     return ['id'=>(int)$r['id'],'batch_id'=>(int)$r['batch_id'],'idea_index'=>(int)$r['idea_index'],
         'title'=>$p['title']??'','mode'=>$p['mode']??'draft','status'=>$r['status'],'error'=>$r['error_text'],'created_at'=>$r['created_at'],
         'image'=>$image?imageAiSafe($image):null,
-        'post'=>$r['post_id']?socialSafe(socialRow($pdo,(int)$r['user_id'],(int)$r['post_id'])):null];
+        'post'=>$r['post_id']?socialSafe(socialRow($pdo,(int)$r['user_id'],(int)$r['post_id']))+['tiktok'=>tiktokPostDelivery($pdo,(int)$r['user_id'],(int)$r['post_id'])]:null];
 }
 function ideaList(PDO $pdo,int $uid): array {
     $batches=opsAll($pdo,'SELECT id FROM idea_batches WHERE user_id=? ORDER BY id DESC LIMIT 8',[$uid]);
@@ -64,7 +64,7 @@ function ideaStart(PDO $pdo,int $uid,array $in): array {
         $batch=ideaBatch($pdo,$uid,$bid);$idea=$batch['data']['ideas'][$index]??null;
         if($batch['status']!=='ready'||!$idea)throw new RuntimeException('Выберите готовую идею.');
         if(($batch['data']['type']??'')!==businessProfile($pdo,$uid)['type'])throw new RuntimeException('Сфера бизнеса изменилась. Создайте новую подборку.');
-        $mode=$in['mode']??'draft';if(!in_array($mode,['draft','auto'],true))throw new RuntimeException('Выберите режим подготовки.');
+        $mode=$in['mode']??'draft';if(!in_array($mode,['draft','auto','multi'],true))throw new RuntimeException('Выберите режим подготовки.');
         $title=opsText($in['title']??$idea['title'],70);$copy=opsText($in['caption']??$idea['caption'],1000);$terms=opsText($in['terms']??'',600);
         if(!$title||!$copy)throw new RuntimeException('Заполните заголовок и текст поста.');
         $scheduled=trim((string)($in['scheduled_at']??''));$c=instagramStatus($pdo,$uid);
@@ -104,7 +104,7 @@ function ideaRunDue(PDO $pdo): int {
         if($job&&in_array($job['status'],['queued','processing'],true))return;
         try{
             if(!$job||$job['status']!=='done')throw new RuntimeException($job['error_text']??'Изображение не создано.');
-            $p=json_decode($r['payload'],true);$post=socialSave($pdo,$uid,['request_key'=>'idea-post-'.str_pad((string)$id,16,'0',STR_PAD_LEFT),'title'=>$p['title'],'caption'=>$p['caption'],'design'=>['headline'=>$p['title'],'layout'=>'photo','source_label'=>'ИИ-иллюстрация'],'image'=>ideaPostImage($job)]);
+            $p=json_decode($r['payload'],true);$post=socialSave($pdo,$uid,['request_key'=>'idea-post-'.str_pad((string)$id,16,'0',STR_PAD_LEFT),'title'=>$p['title'],'caption'=>$p['caption'],'design'=>['headline'=>$p['title'],'layout'=>'photo','source_label'=>'ИИ-иллюстрация','ai_generated'=>true,'destinations'=>$p['mode']==='multi'?['instagram','tiktok']:[]],'image'=>ideaPostImage($job)]);
             // Save the post ID before enqueueing. Retry after interruption finds the same post.
             opsExec($pdo,'UPDATE idea_runs SET post_id=? WHERE id=?',[$post['id'],$id]);
             if($p['mode']==='auto'&&$post['status']==='draft'){

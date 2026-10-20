@@ -11,6 +11,7 @@ if(str_starts_with($action,'social_')){
     if($action==='social_list')out(['posts'=>socialList($pdo,$uid)]);
     opsRateLimit($pdo,'social:'.$uid,90,3600);
     if($action==='social_save')out(['post'=>socialSave($pdo,$uid,$in)]);
+    if($action==='social_publish_channels')out(['post'=>publicationQueue($pdo,$uid,$in,$runtimeConfig)]);
     if($action==='social_queue')out(['post'=>socialQueue($pdo,$uid,$in)]);
     if($action==='social_cancel')out(['post'=>socialChange($pdo,$uid,(int)($in['id']??0),'cancel')]);
     if($action==='social_archive')out(['post'=>socialChange($pdo,$uid,(int)($in['id']??0),'archive')]);

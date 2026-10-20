@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__.'/database.php';
-require_once __DIR__.'/announcements.php';
+require_once __DIR__.'/lessons.php';
 appSessionStart();
 header('X-Content-Type-Options: nosniff'); header('Cache-Control: private, no-store');
 try {
@@ -8,12 +8,12 @@ try {
     if (empty($_SESSION['user_id']) && empty($_SESSION['admin_id'])) { http_response_code(404); exit; }
     $id = $_GET['id'] ?? '';
     if (!is_string($id) || !preg_match('/^[a-f0-9]{32}$/D',$id)) { http_response_code(404); exit; }
-    $pdo = appDatabase(); announcementSchema($pdo);
+    $pdo = appDatabase(); lessonSchema($pdo);
     $admin = announcementAdmin($pdo);
     if (!$admin) {
         if (empty($_SESSION['user_id'])) { http_response_code(404); exit; }
         if (!empty($_SESSION['staff_id'])) { require_once __DIR__.'/operations.php'; opsStaffGate($pdo,(int)$_SESSION['user_id'],'load',[]); }
-        $allowed = announcementAccessible($pdo,(int)$_SESSION['user_id'],0,$id);
+        $allowed = announcementAccessible($pdo,(int)$_SESSION['user_id'],0,$id) || lessonMediaAccessible($pdo,$id);
         if (!$allowed) { http_response_code(404); exit; }
     }
     $q = $pdo->prepare('SELECT * FROM app_announcement_media WHERE id=?'); $q->execute([$id]); $media = $q->fetch();

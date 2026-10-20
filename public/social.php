@@ -50,7 +50,8 @@ function socialSafe(array $r): array {
     return $out;
 }
 function socialList(PDO $pdo,int $uid): array {
-    return array_map('socialSafe',opsAll($pdo,'SELECT * FROM social_posts WHERE user_id=? ORDER BY id DESC LIMIT 100',[$uid]));
+    $deliveries=[];foreach(opsAll($pdo,'SELECT * FROM tiktok_publications WHERE user_id=?',[$uid]) as $d)$deliveries[(int)$d['post_id']]=tiktokPublicationSafe($d);
+    return array_map(function($r)use($deliveries){$p=socialSafe($r);$p['tiktok']=$deliveries[(int)$r['id']]??null;return $p;},opsAll($pdo,'SELECT * FROM social_posts WHERE user_id=? ORDER BY id DESC LIMIT 100',[$uid]));
 }
 function socialSave(PDO $pdo,int $uid,array $d): array {
     $id=(int)($d['id']??0); $version=(int)($d['version']??0); $request=(string)($d['request_key']??'');
@@ -60,6 +61,8 @@ function socialSave(PDO $pdo,int $uid,array $d): array {
     $input=$d['design']??[]; $design=[];
     foreach (['brand'=>70,'headline'=>100,'detail'=>160,'price'=>40,'cta'=>70,'layout'=>12,'theme'=>20,'language'=>2,'source_label'=>180] as $k=>$limit) $design[$k]=opsText($input[$k]??'',$limit);
     $design['demo']=!empty($input['demo']);
+    $design['ai_generated']=($input['ai_generated']??false)===true;
+    $design['destinations']=array_values(array_intersect(is_array($input['destinations']??null)?$input['destinations']:[],['instagram','tiktok']));
     if ($design['headline']==='') throw new RuntimeException('Добавьте заголовок изображения.');
     $image=null;$oldImage=null;
     try {
@@ -71,6 +74,7 @@ function socialSave(PDO $pdo,int $uid,array $d): array {
                 if ((int)$count['n']>=100) throw new RuntimeException('Достигнут лимит: 100 сохранённых постов. Обратитесь к владельцу сервера.');
             } else {
                 $old=socialRow($pdo,$uid,$id,true);
+                if(opsOne($pdo,"SELECT id FROM tiktok_publications WHERE post_id=? AND user_id=? AND status IN ('queued','sending','processing','published','uncertain')",[$id,$uid]))throw new RuntimeException('Пост уже подтверждён для TikTok. Для нового содержания создайте новый пост.');
                 if ($old['status']!=='draft'||(int)$old['version']!==$version) throw new RuntimeException('Пост изменился или уже поставлен в очередь. Обновите список.');
             }
             $image=socialImageSave((string)($d['image']??'')); $now=socialNow();

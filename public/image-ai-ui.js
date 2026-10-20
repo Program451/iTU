@@ -40,7 +40,7 @@ async function imageAiCancel(id){try{await api('image_ai_cancel',{id});await ima
 async function imageAiUse(id){
     const row=imageAiImages.find(x=>x.id===id);if(!row?.image_url)return;
     const epoch=imageAiEpoch,canvas=$('socialCanvas');const img=new Image();
-    img.onload=()=>{if(epoch!==imageAiEpoch||$('socialCanvas')!==canvas)return;socialPhoto=img;$('socialLayout').value='photo';socialDraw();canvas.scrollIntoView({behavior:'smooth',block:'center'});toast('Изображение добавлено. Заполните текст и сохраните черновик.');};
+    img.onload=()=>{if(epoch!==imageAiEpoch||$('socialCanvas')!==canvas)return;socialPhoto=img;socialDraftMeta.ai_generated=true;$('socialLayout').value='photo';socialDraw();canvas.scrollIntoView({behavior:'smooth',block:'center'});toast('Изображение добавлено. Заполните текст и сохраните черновик.');};
     img.onerror=()=>toast('Не удалось загрузить изображение. Обновите страницу.');img.src=row.image_url;
 }
 function imageAiMount(){clearTimeout(imageAiTimer);imageAiEpoch++;if(opsState.role==='owner'&&['marketing','settings'].includes(current))imageAiRefresh();}

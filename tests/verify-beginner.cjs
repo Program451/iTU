@@ -27,7 +27,7 @@ run(read('qr-local.js'));for(const script of w.document.querySelectorAll('script
 const tick=()=>new Promise(r=>setTimeout(r,15));
 (async()=>{
  await tick();run('socialMount=()=>{};serviceMount=()=>{};imageAiMount=()=>{};ideaMount=()=>{};');
- assert.equal(run('current'),'beginner');assert.equal(w.document.querySelectorAll('#nav a').length,4);
+ assert.equal(run('current'),'beginner');assert.equal(w.document.querySelectorAll('#nav a').length,5);
  assert.equal(w.document.querySelectorAll('.beginner-sector').length,28);
  assert(!w.document.querySelector('#nav a[href="#operations"]'));
  const initial=JSON.stringify(fixture.state.profile);

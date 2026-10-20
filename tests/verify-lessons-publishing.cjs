@@ -1,0 +1,27 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const {JSDOM}=require('jsdom');
+(async()=>{
+ const dom=new JSDOM('<main id="content"></main><dialog id="modal"><div id="modalBody"></div></dialog>',{url:'http://localhost/',runScripts:'outside-only'}),w=dom.window,run=s=>vm.runInContext(s,dom.getInternalVMContext());
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new w.Event('close'))};w.HTMLMediaElement.prototype.pause=()=>{};
+ w.$=id=>w.document.getElementById(id);w.esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));w.head=(a,b)=>'<h1>'+w.I18n.t(a)+'</h1><p>'+w.I18n.t(b)+'</p>';w.current='lessons';w.BOOT={csrf:'test'};w.toast=()=>{};w.state={instagram:{check_status:'verified',username:'test_ig',account_id:'178414000001'}};
+ w.socialDate=x=>x;w.modal=(title,html)=>{w.$('modalBody').innerHTML='<h2>'+title+'</h2>'+html;w.$('modal').showModal();};
+ for(const file of ['i18n-catalog.js','i18n.js','lessons-ui.js','publication-ui.js'])run(fs.readFileSync('public/'+file,'utf8'));
+ const rows=[{id:1,title_ru:'Instagram <script>bad()</script>',title_kk:'Instagram сабағы',body_ru:'Подключение фото',category:'instagram',media_id:'a'.repeat(32),completed:0},{id:2,title_ru:'Cloudflare',body_ru:'Создание изображений',category:'cloudflare',media_id:'b'.repeat(32),completed:0}];
+ let requests=[];w.fetch=async(url,options)=>{const body=JSON.parse(options.body);requests.push(body);return {ok:true,json:async()=>body.action==='list'?{items:structuredClone(rows)}:{ok:true}};};
+ w.$('content').innerHTML=w.lessonsPage();await w.lessonsMount();assert.equal(w.document.querySelectorAll('.lesson-card').length,2);assert.equal(w.document.querySelectorAll('#lessonGrid script').length,0);
+ run("lessonFilter='instagram';lessonsRenderList()");assert.equal(w.document.querySelectorAll('.lesson-card').length,1);w.lessonOpen(1);assert(w.$('lessonDialog').querySelector('video').controls);assert(!w.$('lessonDialog').querySelector('video').autoplay);assert.equal(w.$('lessonDialog').querySelectorAll('script').length,0);
+ w.$('lessonComplete').click();await new Promise(r=>setTimeout(r,0));assert(requests.some(r=>r.action==='complete'&&r.completed===true));assert(w.$('lessonProgress').textContent.includes('1 / 2'));
+ w.I18n.set('kk');w.lessonsRenderList();assert(w.$('lessonGrid').textContent.includes('Қайта көру'));assert(w.$('lessonGrid').textContent.includes('Instagram сабағы'));
+ const pending=[];w.fetch=()=>new Promise(resolve=>pending.push(resolve));const old=w.lessonsMount();w.$('content').innerHTML='<div id="lessonGrid">New page</div>';pending.shift()({ok:true,json:async()=>({items:rows})});await old;assert.equal(w.$('lessonGrid').textContent,'New page','Stale library response overwrote another page');w.I18n.set('ru');
+ w.current='marketing';w.socialPosts=[{id:7,version:1,title:'Кофе',caption:'Текст <b>пользователя</b>',image_url:'social-media.php?id=7',status:'draft',design:{ai_generated:true}}];
+ const creator={account_key:'a'.repeat(64),nickname:'Local <img> Creator',username:'qa',privacy_options:['PUBLIC_TO_EVERYONE','SELF_ONLY'],comment_disabled:true};
+ let sent;w.api=async(action,data)=>{if(action==='tiktok_creator')return {creator};sent={action,data};return {ok:true}};w.socialRefresh=async()=>{};w.ideaRefresh=async()=>{};
+ w.publicationReview(7);w.$('publicationForm').elements.tiktok.checked=true;await w.publicationToggleTikTok(7);
+ const f=w.$('publicationForm');assert.equal(f.elements.tk_privacy.value,'','Privacy must not be preselected');assert(f.elements.tk_comments.disabled);assert(!f.elements.tk_comments.checked);assert(!f.elements.tk_commercial.checked);assert(f.elements.tk_aigc.checked);assert.equal(w.$('publicationTikTok').querySelectorAll('img').length,0,'Creator nickname injected HTML');
+ f.elements.tk_commercial.checked=true;w.publicationDisclosure();assert(f.querySelector('button[type=submit]').disabled);f.elements.tk_brand.checked=true;w.publicationDisclosure();assert(Array.from(f.elements.tk_privacy.options).find(o=>o.value==='SELF_ONLY').disabled);f.elements.tk_brand.checked=false;w.publicationDisclosure();await w.publicationSubmit({preventDefault(){},target:f},7,1);assert(!sent,'Disclosure without brand selection sent');
+ f.elements.tk_privacy.value='SELF_ONLY';w.publicationDisclosure();assert(f.elements.tk_brand.disabled);f.elements.tk_own.checked=true;w.publicationDisclosure();f.elements.tk_consent.checked=true;f.elements.approved.checked=true;
+ await w.publicationSubmit({preventDefault(){},target:f},7,1);assert.equal(sent.action,'social_publish_channels');assert.deepEqual(Array.from(sent.data.channels),['instagram','tiktok']);assert.equal(sent.data.tiktok.privacy_level,'SELF_ONLY');assert.equal(sent.data.tiktok.brand_organic,true);assert.equal(sent.data.tiktok.allow_comment,false);assert.equal(sent.data.tiktok.consent,true);
+ assert(w.publicationPending({tiktok:{status:'processing'}}));assert(!w.publicationPending({tiktok:{status:'published'}}));
+ const status=w.publicationStatusMarkup({id:7,tiktok:{status:'failed',last_error:'<script>bad()</script>',account_name:'Автор'}});assert(status.includes('&lt;script&gt;'));
+ dom.window.close();console.log('PASS lesson filtering, progress, RU/KK, safe video UI, stale response isolation and explicit multi-network approval.');
+})().catch(e=>{console.error(e);process.exitCode=1});

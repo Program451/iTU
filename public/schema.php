@@ -2,6 +2,8 @@
 require_once __DIR__.'/platform.php';
 require_once __DIR__.'/instagram.php';
 require_once __DIR__.'/tiktok.php';
+require_once __DIR__.'/tiktok-publishing.php';
+require_once __DIR__.'/lessons.php';
 require_once __DIR__.'/social.php';
 require_once __DIR__.'/image-generation.php';
 require_once __DIR__.'/cloud-text.php';
@@ -20,6 +22,8 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS aulieata_coop_members (id BIGINT UNSIGNED
     instagramSchema($pdo);
     tiktokSchema($pdo);
     socialSchema($pdo);
+    tiktokPublishSchema($pdo);
+    lessonSchema($pdo);
     imageAiSchema($pdo);
     cloudTextSchema($pdo);
     ideaSchema($pdo);

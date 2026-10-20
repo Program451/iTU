@@ -5,7 +5,7 @@ const {JSDOM}=require('jsdom');
  const w=dom.window,run=s=>vm.runInContext(s,dom.getInternalVMContext());
  w.$=id=>w.document.getElementById(id);w.esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');w.empty=s=>s;w.current='marketing';w.opsState={role:'owner'};
  const timers=new Map();let timerId=0;w.setTimeout=fn=>{timers.set(++timerId,fn);return timerId};w.clearTimeout=id=>timers.delete(id);
- run(fs.readFileSync('public/i18n-catalog.js','utf8'));run(fs.readFileSync('public/i18n.js','utf8'));run(fs.readFileSync('public/social-ui.js','utf8'));run(fs.readFileSync('public/idea-ui.js','utf8'));
+ run(fs.readFileSync('public/i18n-catalog.js','utf8'));run(fs.readFileSync('public/i18n.js','utf8'));run(fs.readFileSync('public/social-ui.js','utf8'));run(fs.readFileSync('public/idea-ui.js','utf8'));run(fs.readFileSync('public/publication-ui.js','utf8'));
  const post={id:7,version:1,title:'Кофе',caption:'Проверенный текст',status:'queued',image_url:'social-media.php?id=7',design:{}};
  const item={id:4,batch_id:1,idea_index:0,title:'Кофе',status:'done',mode:'auto',post,image:{status:'done',image_url:'image-ai-media.php?id=2'}};
  const data={batches:[],runs:[item],images:{connected:true},instagram:{check_status:'verified',username:'test',account_id:'178414123456'}};

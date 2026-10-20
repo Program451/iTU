@@ -4,7 +4,7 @@
   "private": true,
   "description": "PHP business workspace with Telegram and Gemini integrations",
   "scripts": {
-    "test": "node tests/verify.mjs && node tests/verify-catalog.cjs && node tests/verify-sources.cjs && node tests/verify-business.cjs && node tests/verify-i18n.cjs && node tests/verify-beginner.cjs && node tests/verify-workflows.cjs && node tests/verify-content-flow.cjs"
+    "test": "node tests/verify.mjs && node tests/verify-catalog.cjs && node tests/verify-sources.cjs && node tests/verify-business.cjs && node tests/verify-i18n.cjs && node tests/verify-beginner.cjs && node tests/verify-workflows.cjs && node tests/verify-content-flow.cjs && node tests/verify-lessons-publishing.cjs"
   },
   "devDependencies": {
     "jsdom": "26.1.0",

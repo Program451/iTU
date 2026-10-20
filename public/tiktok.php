@@ -57,7 +57,7 @@ function tiktokStatus(PDO $pdo,int $uid): array {
     $c=opsOne($pdo,'SELECT display_name,scopes,expires_at,refresh_expires_at,check_status,checked_at FROM aulieata_tiktok_connections WHERE user_id=?',[$uid]);
     if($c&&$c['refresh_expires_at']<=gmdate('Y-m-d H:i:s'))$c['check_status']='invalid';
     return ['configured'=>(bool)$app,'client_key'=>$app['client_key']??'','redirect_uri'=>appUrl('tiktok-callback.php'),
-        'connection'=>$c?:null,'requested_scopes'=>['user.info.basic']];
+        'connection'=>$c?:null,'publishing_authorized'=>$c&&in_array('video.publish',explode(',',$c['scopes']),true),'requested_scopes'=>['user.info.basic','video.publish']];
 }
 
 function tiktokSaveApp(PDO $pdo,int $uid,array $cfg,string $key,string $secret): array {
@@ -75,9 +75,9 @@ function tiktokSaveApp(PDO $pdo,int $uid,array $cfg,string $key,string $secret):
     });
 }
 
-function tiktokBegin(PDO $pdo,int $uid,array &$session): string {
+function tiktokBegin(PDO $pdo,int $uid,array &$session,bool $publishing=false): string {
     if((int)($session['user_id']??0)!==$uid||!empty($session['staff_id']))throw new RuntimeException('Подключение доступно владельцу.');
-    return tiktokLock($pdo,$uid,function()use($pdo,$uid,&$session){
+    return tiktokLock($pdo,$uid,function()use($pdo,$uid,&$session,$publishing){
         $app=opsOne($pdo,'SELECT client_key,revision FROM aulieata_tiktok_apps WHERE user_id=?',[$uid]);
         if(!$app)throw new RuntimeException('Сначала сохраните данные приложения TikTok.');
         $uri=appUrl('tiktok-callback.php');
@@ -87,7 +87,7 @@ function tiktokBegin(PDO $pdo,int $uid,array &$session): string {
         opsExec($pdo,'UPDATE aulieata_tiktok_apps SET state_hash=?,state_until=? WHERE user_id=?',
             [hash('sha256',$state),gmdate('Y-m-d H:i:s',$until),$uid]);
         return 'https://www.tiktok.com/v2/auth/authorize/?'.http_build_query(['client_key'=>$app['client_key'],
-            'response_type'=>'code','scope'=>'user.info.basic','redirect_uri'=>$uri,'state'=>$state,'disable_auto_auth'=>1]);
+            'response_type'=>'code','scope'=>$publishing?'user.info.basic,video.publish':'user.info.basic','redirect_uri'=>$uri,'state'=>$state,'disable_auto_auth'=>1]);
     });
 }
 

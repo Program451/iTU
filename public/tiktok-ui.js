@@ -5,9 +5,9 @@ function tiktokConnectionTool(){
     const checked=c?new Date(c.checked_at.replace(' ','T')+'Z').toLocaleString('ru-RU',{timeZone:'Asia/Almaty'}):'';
     return '<section class="card" id="tiktokConnection" style="margin-bottom:24px"><div class="sectiontitle"><h2>TikTok</h2><span class="badge '+(ok?'':'pending')+'">'+I18n.t(status)+'</span></div>'+
         (c?'<p><b>'+esc(c.display_name)+I18n.html("</b></p><p class=\"hint\">Последняя проверка: ")+esc(checked)+' · UTC+5</p>':'')+
-        I18n.html("<p>Подключите аккаунт через официальный вход TikTok. Сайт запрашивает только имя и идентификатор профиля. Доступ хранится зашифрованным на сервере.</p>")+
-        I18n.html("<p class=\"hint\">Публикация фото и видео пока не включена. Для неё потребуется Content Posting API и разрешения TikTok. Платная реклама при подключении не запускается.</p>")+
-        (t.configured?'<div class="actions"><button class="btn" onclick="tiktokConnect(this)">'+(c?I18n.t("Подключить заново"):I18n.t("Войти через TikTok"))+'</button>'+(c?I18n.html("<button class=\"btn light\" onclick=\"tiktokCheckAccount(this)\">Проверить подключение</button>"):'')+'<button class="btn light" onclick="tiktokAskDisconnect()">'+(c?I18n.t("Отключить"):I18n.t("Удалить настройки"))+'</button></div>':'')+
+        I18n.html("<p>Подключите аккаунт через официальный вход TikTok. Для публикации фото-постов отдельно разрешите отправку материалов. Доступ хранится зашифрованным на сервере.</p>")+
+        I18n.html("<p class=\"hint\">Фото-посты можно отправлять сразу или по расписанию. Добавьте Content Posting API → Direct Post и video.publish, подтвердите домен в URL properties. Публичные посты доступны после проверки приложения TikTok.</p>")+
+        (t.configured?'<p><span class="badge">'+esc(I18n.t(t.publishing_authorized?'Публикация разрешена':'Нужно разрешение на публикацию'))+'</span></p><div class="actions"><button class="btn" onclick="tiktokConnect(this,true)">'+esc(I18n.t('Разрешить публикацию в TikTok'))+'</button>'+'<button class="btn" onclick="tiktokConnect(this)">'+(c?I18n.t("Подключить заново"):I18n.t("Войти через TikTok"))+'</button>'+(c?I18n.html("<button class=\"btn light\" onclick=\"tiktokCheckAccount(this)\">Проверить подключение</button>"):'')+'<button class="btn light" onclick="tiktokAskDisconnect()">'+(c?I18n.t("Отключить"):I18n.t("Удалить настройки"))+'</button></div>':'')+
         '<details '+(!t.configured?'open':'')+I18n.html(" style=\"margin-top:18px\"><summary>Настройка приложения TikTok</summary><ol><li>На <a href=\"https://developers.tiktok.com/\" target=\"_blank\" rel=\"noopener noreferrer\">TikTok for Developers</a> откройте Manage apps → Create app.</li><li>Название: <b>AulieAta AI</b>, платформа: <b>Web</b>. Укажите адрес своего сайта.</li><li>Добавьте <b>Login Kit</b> и разрешение <code>user.info.basic</code>. Для тестирования используйте Sandbox и добавьте свой TikTok как Target user, если кабинет предлагает этот режим.</li><li>В Login Kit внесите Redirect URI точно как показано ниже.</li><li>Сохраните Client key и Client secret здесь, затем нажмите «Войти через TikTok».</li></ol>")+
         I18n.html("<p class=\"hint\">Документы сервиса для настройки TikTok: <a href=\"terms.php\" target=\"_blank\" rel=\"noopener\">Условия использования</a> · <a href=\"privacy.php\" target=\"_blank\" rel=\"noopener\">Политика конфиденциальности</a>.</p>")+
         '<div class="field"><label for="tiktokRedirect">Redirect URI</label><input id="tiktokRedirect" readonly value="'+esc(t.redirect_uri||'')+'" onclick="this.select()"></div>'+
@@ -19,9 +19,9 @@ async function tiktokSaveSettings(event){
     const client_key=form.elements.client_key.value,client_secret=form.elements.client_secret.value;form.elements.client_secret.value='';
     try{const r=await api('tiktok_save_app',{client_key,client_secret});state.tiktok=r.tiktok;render();toast('Данные сохранены. Теперь войдите через TikTok.');}catch(e){toast(e.message);}finally{b.disabled=false;}
 }
-async function tiktokConnect(button){
+async function tiktokConnect(button,publishing=false){
     button.disabled=true;
-    try{const r=await api('tiktok_begin');const u=new URL(r.url);if(u.origin!=='https://www.tiktok.com'||u.pathname!=='/v2/auth/authorize/')throw Error('Не удалось открыть вход TikTok.');window.location.assign(u.href);}catch(e){toast(e.message);button.disabled=false;}
+    try{const r=await api('tiktok_begin',{publishing});const u=new URL(r.url);if(u.origin!=='https://www.tiktok.com'||u.pathname!=='/v2/auth/authorize/')throw Error('Не удалось открыть вход TikTok.');window.location.assign(u.href);}catch(e){toast(e.message);button.disabled=false;}
 }
 async function tiktokCheckAccount(button){
     button.disabled=true;
