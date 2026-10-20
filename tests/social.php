@@ -63,6 +63,24 @@ try{
     socialReady($pdo,$amb['id']);socialPublishStep($pdo,$amb['id'],$cfg,fn()=>['status_code'=>'PUBLISHED']);socialAssert(socialRow($pdo,$uid,$amb['id'])['status']==='published','Reconciliation failed');
     echo "PASS uncertain delivery is never resent and can reconcile read-only\n";
 
+    $denied=socialFixture($pdo,$uid);socialQueue($pdo,$uid,['id'=>$denied['id'],'version'=>1,'account_id'=>$account,'approved'=>true]);socialPublishStep($pdo,$denied['id'],$cfg,$mock);socialReady($pdo,$denied['id']);
+    $permissionError=socialProviderMessage(['code'=>10,'error_subcode'=>123,'message'=>'Do not echo secret token']);
+    $rejectPublish=function($t,$m,$p,$d)use($mock,$permissionError){if(str_ends_with($p,'/media_publish'))throw new SocialProviderError($permissionError);return $mock($t,$m,$p,$d);};
+    socialPublishStep($pdo,$denied['id'],$cfg,$rejectPublish);$rejected=socialRow($pdo,$uid,$denied['id']);
+    socialAssert($rejected['status']==='failed'&&$rejected['last_error']===$permissionError,'Definitive provider rejection must remain actionable');
+    socialAssert(!str_contains($permissionError,'secret')&&str_contains($permissionError,'10/123'),'Safe provider diagnostics');
+    socialChange($pdo,$uid,$denied['id'],'cancel');
+    socialAssert(socialRow($pdo,$uid,$denied['id'])['status']==='draft','Rejected post cannot be reviewed again');
+    $readRetry=socialFixture($pdo,$uid);socialQueue($pdo,$uid,['id'=>$readRetry['id'],'version'=>1,'account_id'=>$account,'approved'=>true]);
+    socialPublishStep($pdo,$readRetry['id'],$cfg,fn()=>throw new SocialProviderError('Temporary quota API outage',true));
+    socialAssert(socialRow($pdo,$uid,$readRetry['id'])['status']==='queued','Read-only temporary outage lost approved schedule');
+    socialReady($pdo,$readRetry['id']);socialPublishStep($pdo,$readRetry['id'],$cfg,$mock);
+    socialAssert(socialRow($pdo,$uid,$readRetry['id'])['container_id']==='900001','Read-only retry did not resume preparation');
+    $initLost=socialFixture($pdo,$uid);socialQueue($pdo,$uid,['id'=>$initLost['id'],'version'=>1,'account_id'=>$account,'approved'=>true]);
+    $lostContainer=function($t,$m,$p,$d)use($mock){if(str_ends_with($p,'/media'))throw new SocialProviderError('Unknown container outcome',true);return $mock($t,$m,$p,$d);};
+    socialPublishStep($pdo,$initLost['id'],$cfg,$lostContainer);socialAssert(socialRow($pdo,$uid,$initLost['id'])['status']==='failed','Container creation was automatically replayed');
+    echo "PASS definitive publish rejection remains actionable, transient reads retry, unknown writes never replay\n";
+
     $dbFail=socialFixture($pdo,$uid);socialQueue($pdo,$uid,['id'=>$dbFail['id'],'version'=>1,'account_id'=>$account,'approved'=>true]);socialPublishStep($pdo,$dbFail['id'],$cfg,$mock);socialReady($pdo,$dbFail['id']);
     $trigger='social_test_'.bin2hex(random_bytes(6));$pdo->exec("CREATE TRIGGER $trigger BEFORE UPDATE ON social_posts FOR EACH ROW BEGIN IF NEW.id=".(int)$dbFail['id']." AND NEW.status='published' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Simulated receipt write failure'; END IF; END");
     try{socialPublishStep($pdo,$dbFail['id'],$cfg,$mock);socialAssert(socialRow($pdo,$uid,$dbFail['id'])['status']==='uncertain','Receipt write failure permitted resend');}finally{$pdo->exec('DROP TRIGGER '.$trigger);}

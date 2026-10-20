@@ -136,6 +136,17 @@ class SocialProviderError extends RuntimeException {
     public bool $uncertain;
     public function __construct(string $message,bool $uncertain=false){parent::__construct($message);$this->uncertain=$uncertain;}
 }
+function socialProviderMessage(array $error): string {
+    $code=(int)($error['code']??0);$subcode=(int)($error['error_subcode']??0);
+    $message=match(true){
+        $code===190=>'Маркер Instagram истёк или отозван. Замените его в настройках.',
+        in_array($code,[10,200],true)=>'Instagram не разрешил публикацию. Подключите аккаунт с разрешением instagram_business_content_publish.',
+        in_array($code,[4,17,32,613],true)=>'Instagram временно ограничил публикации. Проверьте лимит аккаунта и назначьте другое время.',
+        default=>'Instagram не подтвердил запрос. Проверьте доступ на публикацию, изображение и лимит аккаунта.',
+    };
+    // Only numeric provider diagnostics are exposed; never echo request URLs or credentials.
+    return $message.($code?' [Meta '.$code.($subcode?'/'.$subcode:'').']':'');
+}
 function socialRequest(string $token,string $method,string $path,array $params=[]): array {
     if (!in_array($method,['GET','POST'],true)||!preg_match('~^/[0-9]{5,40}(?:/(?:media|media_publish|content_publishing_limit))?$~D',$path)) throw new RuntimeException('Unsupported publishing request');
     $url='https://graph.instagram.com/v25.0'.$path;
@@ -145,8 +156,7 @@ function socialRequest(string $token,string $method,string $path,array $params=[
     if($method==='POST'){$options[CURLOPT_POST]=true;$options[CURLOPT_POSTFIELDS]=http_build_query($params);}
     curl_setopt_array($ch,$options);$raw=curl_exec($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);$data=json_decode((string)$raw,true);
     if($code!==200||!is_array($data)||isset($data['error'])){
-        $invalid=(int)($data['error']['code']??0)===190;
-        $message=$invalid?'Маркер Instagram истёк или отозван. Замените его в настройках.':'Instagram не подтвердил запрос. Проверьте доступ на публикацию, изображение и лимит аккаунта.';
+        $message=socialProviderMessage(is_array($data['error']??null)?$data['error']:[]);
         throw new SocialProviderError($message,$code===0||$code>=500||!is_array($data)||!isset($data['error']));
     }
     return $data;
@@ -168,6 +178,7 @@ function socialPublishStep(PDO $pdo,int $id,array $cfg,?callable $request=null):
         try{$token=openToken($c['token_box'],$cfg);}catch(Throwable $e){socialSet($pdo,$id,$afterSend?'uncertain':'failed','Не удалось открыть сохранённый токен.',3600);return;}
         if(!$r['approved_at']){socialSet($pdo,$id,'failed','Нет подтверждения владельца.');return;}
         opsExec($pdo,'UPDATE social_posts SET attempts=attempts+1 WHERE id=?',[$id]);
+        $preparing=false;
         try{
             if($r['status']==='queued'){
                 if(!is_file(socialImagePath($r['image_key']))||!hash_equals($r['image_hash'],hash_file('sha256',socialImagePath($r['image_key']))))throw new SocialProviderError('Изображение изменилось. Сохраните новый черновик.');
@@ -178,6 +189,7 @@ function socialPublishStep(PDO $pdo,int $id,array $cfg,?callable $request=null):
                 $public=bin2hex(random_bytes(32));
                 // Persist before network I/O. A crash here cannot accidentally publish later.
                 opsExec($pdo,"UPDATE social_posts SET status='processing',public_key=?,public_until=?,next_check=?,updated_at=? WHERE id=?",[$public,socialLater(48*3600),socialLater(60),socialNow(),$id]);
+                $preparing=true;
                 $url=appUrl('social-media.php').'?id='.$id.'&k='.$public;
                 $container=socialId($request($token,'POST','/'.$r['account_id'].'/media',['image_url'=>$url,'caption'=>$r['caption']]));
                 opsExec($pdo,'UPDATE social_posts SET container_id=? WHERE id=?',[$container,$id]);
@@ -196,7 +208,13 @@ function socialPublishStep(PDO $pdo,int $id,array $cfg,?callable $request=null):
             socialSet($pdo,$id,'publishing',null,120);
             $afterSend=true;
             try{$media=socialId($request($token,'POST','/'.$r['account_id'].'/media_publish',['creation_id'=>$r['container_id']]));}
-            catch(Throwable $e){socialSet($pdo,$id,'uncertain','Отправка началась, но ответ не подтверждён. Проверим статус без повторной публикации.',180);return;}
+            catch(Throwable $e){
+                if($e instanceof SocialProviderError&&!$e->uncertain){
+                    // A definitive rejection is safe to return for review; a lost response is not.
+                    socialSet($pdo,$id,'failed',$e->getMessage());return;
+                }
+                socialSet($pdo,$id,'uncertain','Отправка началась, но ответ не подтверждён. Проверим статус без повторной публикации.',180);return;
+            }
             opsExec($pdo,"UPDATE social_posts SET status='published',media_id=?,last_error=NULL,updated_at=? WHERE id=?",[$media,socialNow(),$id]);
             try{
                 $info=$request($token,'GET','/'.$media,['fields'=>'permalink']);$link=(string)($info['permalink']??'');
@@ -206,7 +224,7 @@ function socialPublishStep(PDO $pdo,int $id,array $cfg,?callable $request=null):
             $safe=$e instanceof SocialProviderError?$e->getMessage():'Обработка прервана. Проверьте подключение и повторите проверку позже.';
             if($afterSend){socialSet($pdo,$id,'uncertain',$safe,3600);return;}
             // Only pre-publication read failures are retried; creating a container never sends a post.
-            if($r['status']==='processing' && $e instanceof SocialProviderError && $e->uncertain && (int)$r['attempts']<15){socialSet($pdo,$id,'processing',$safe,120);return;}
+            if(!$preparing&&in_array($r['status'],['queued','processing'],true)&&$e instanceof SocialProviderError&&$e->uncertain&&(int)$r['attempts']<15){socialSet($pdo,$id,$r['status'],$safe,120);return;}
             socialSet($pdo,$id,'failed',$safe);
         }
     });

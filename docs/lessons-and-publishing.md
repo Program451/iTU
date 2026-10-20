@@ -16,6 +16,8 @@ Approved images stay outside the webroot; TikTok fetches a random-token URL expi
 
 Official references: [Photo API](https://developers.tiktok.com/docs/en/content-posting-api-reference-photo-post), [sharing requirements](https://developers.tiktok.com/docs/en/content-sharing-guidelines).
 
+Instagram retries temporary read-only failures before creating a media container. A definite rejection of `media_publish` retains its safe numeric Meta diagnostic and returns the post for review; a lost acknowledgement remains read-only and is never automatically resent. TikTok reconnect buttons request publishing permission, and a profile-only connection is shown as missing publication access. A failed TikTok readiness check disables dual submission while still allowing the user to select Instagram alone.
+
 ## Verification
 
 Run `npm test`. Against a dedicated local `itu_test_*` database and local PHP web server, set `AULIEATA_CONFIG` to the private test config and `AULIEATA_TEST_VIDEO` to a small valid MP4, then run:

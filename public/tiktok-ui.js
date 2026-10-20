@@ -1,9 +1,9 @@
 function tiktokConnectionTool(){
     if(opsState.role!=='owner')return '';
     const t=state.tiktok||{},c=t.connection,ok=c?.check_status==='verified';
-    const status=c?(ok?'Аккаунт проверен':c.check_status==='invalid'?'Подключите заново':'Проверка недоступна'):(t.configured?'Ожидает входа в TikTok':'Нужны данные приложения');
+    const status=c?(ok?(t.publishing_authorized?'Публикация разрешена':'Нужно разрешение на публикацию'):c.check_status==='invalid'?'Подключите заново':'Проверка недоступна'):(t.configured?'Ожидает входа в TikTok':'Нужны данные приложения');
     const checked=c?new Date(c.checked_at.replace(' ','T')+'Z').toLocaleString('ru-RU',{timeZone:'Asia/Almaty'}):'';
-    return '<section class="card" id="tiktokConnection" style="margin-bottom:24px"><div class="sectiontitle"><h2>TikTok</h2><span class="badge '+(ok?'':'pending')+'">'+I18n.t(status)+'</span></div>'+
+    return '<section class="card" id="tiktokConnection" style="margin-bottom:24px"><div class="sectiontitle"><h2>TikTok</h2><span class="badge '+(ok&&t.publishing_authorized?'':'pending')+'">'+I18n.t(status)+'</span></div>'+
         (c?'<p><b>'+esc(c.display_name)+I18n.html("</b></p><p class=\"hint\">Последняя проверка: ")+esc(checked)+' · UTC+5</p>':'')+
         I18n.html("<p>Подключите аккаунт через официальный вход TikTok. Для публикации фото-постов отдельно разрешите отправку материалов. Доступ хранится зашифрованным на сервере.</p>")+
         I18n.html("<p class=\"hint\">Фото-посты можно отправлять сразу или по расписанию. Добавьте Content Posting API → Direct Post и video.publish, подтвердите домен в URL properties. Публичные посты доступны после проверки приложения TikTok.</p>")+
@@ -19,7 +19,7 @@ async function tiktokSaveSettings(event){
     const client_key=form.elements.client_key.value,client_secret=form.elements.client_secret.value;form.elements.client_secret.value='';
     try{const r=await api('tiktok_save_app',{client_key,client_secret});state.tiktok=r.tiktok;render();toast('Данные сохранены. Теперь войдите через TikTok.');}catch(e){toast(e.message);}finally{b.disabled=false;}
 }
-async function tiktokConnect(button,publishing=false){
+async function tiktokConnect(button,publishing=true){
     button.disabled=true;
     try{const r=await api('tiktok_begin',{publishing});const u=new URL(r.url);if(u.origin!=='https://www.tiktok.com'||u.pathname!=='/v2/auth/authorize/')throw Error('Не удалось открыть вход TikTok.');window.location.assign(u.href);}catch(e){toast(e.message);button.disabled=false;}
 }

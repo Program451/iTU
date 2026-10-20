@@ -102,8 +102,14 @@ let loginRegistration=false;
 for(const id of ['phone','regPhone']){
     const field=document.getElementById(id);
     field.addEventListener('focus',()=>{
-        if(!field.value.trim())field.value='+7';
         if(field.value==='+7')field.setSelectionRange(2,2);
+    });
+    field.addEventListener('blur',()=>{if(!field.value.trim())field.value='+7';});
+    field.addEventListener('paste',event=>{
+        const pasted=event.clipboardData?.getData('text')||'',digits=pasted.replace(/\D/g,'');
+        if(/^[78]\d{10}$/.test(digits)){
+            event.preventDefault();field.value='+7'+digits.slice(1);field.setSelectionRange(12,12);
+        }
     });
 }
 function switchTab(reg){loginRegistration=reg;document.getElementById('loginForm').classList.toggle('hidden',reg);document.getElementById('registerForm').classList.toggle('hidden',!reg);document.getElementById('tabLogin').classList.toggle('active',!reg);document.getElementById('tabRegister').classList.toggle('active',reg);loginHeading();}
