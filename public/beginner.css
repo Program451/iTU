@@ -1,0 +1,100 @@
+.beginner{--bg-forest:#173b2b;--bg-lime:#d2eeaa;--bg-border:#dce2d7;max-width:1440px;margin:auto;color:#243b2e}
+.beginner *{box-sizing:border-box}
+.beginner h1,.beginner h2,.beginner h3,.beginner h4{letter-spacing:-.025em}
+.beginner h3{font-size:21px;margin:10px 0 16px}
+.beginner h4{font-size:16px;margin:24px 0 12px}
+.beginner p{line-height:1.65}
+.beginner .hint{font-size:13px;color:#657467;line-height:1.65}
+.beginner .card{padding:26px;border:1px solid var(--bg-border);border-radius:22px;box-shadow:none;min-width:0}
+.beginner .card+.card{margin-top:20px}
+.beginner-hero{background:var(--bg-forest);color:#fff;border-radius:26px;padding:38px 42px;display:flex;align-items:center;justify-content:space-between;gap:28px;overflow:hidden}
+.beginner-hero h1{font-size:clamp(26px,3vw,42px);font-weight:600;line-height:1.16;max-width:760px;margin:18px 0}
+.beginner-hero p{color:#d7e2d7;max-width:650px;margin:0}
+.beginner-eyebrow{font-size:11px;letter-spacing:.12em;font-weight:700;text-transform:uppercase}
+.beginner-hero .beginner-eyebrow{color:var(--bg-lime)}
+.beginner-hero-mark{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 150px;width:150px;height:150px;background:var(--bg-lime);color:var(--bg-forest);border-radius:50%;font-size:76px;line-height:1.1;transform:rotate(-8deg)}
+.beginner-hero-mark small{font-size:12px;font-weight:700;margin-top:5px}
+.beginner-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0 28px}
+.beginner-steps button{background:transparent;border:1px solid var(--bg-border);border-radius:14px;padding:16px;text-align:left;display:flex;gap:12px;align-items:center;font:inherit;font-weight:600;color:#657467;cursor:pointer}
+.beginner-steps button.active{background:#e6eddc;color:var(--bg-forest);border-color:#b4c7a6}
+.beginner-steps span{font-size:12px;padding:7px;border-radius:8px;background:#fff}
+.beginner button:disabled{cursor:default;opacity:.55}
+.beginner .sectiontitle{gap:20px;flex-wrap:wrap;align-items:center}
+.beginner .sectiontitle h2{margin:0}
+.beginner .sectiontitle p{margin:8px 0 0;color:#657467}
+.beginner-filters{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin:24px 0}
+.beginner input:not([type=checkbox]),.beginner select,.beginner textarea{border:1px solid #cdd6c8;background:#fff;border-radius:12px;color:#233e2c;width:100%;max-width:100%;min-width:0;font:inherit;line-height:1.5;padding:12px 14px;min-height:46px}
+.beginner textarea{resize:vertical}
+.beginner input:focus,.beginner select:focus,.beginner textarea:focus{outline:2px solid #809d60;outline-offset:2px}
+.beginner input:invalid:not(:focus){border-color:#a65b48}
+.beginner-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.beginner-sector{padding:22px;border:1px solid var(--bg-border);border-radius:18px;display:flex;flex-direction:column;background:#fff}
+.beginner-sector.is-current{border-color:#809d60}
+.beginner-sector-top{display:flex;align-items:center;gap:12px}
+.beginner-sector-top small{font-size:11px;color:#657467}
+.beginner-icon{font-size:22px;background:#edf1e6;border-radius:12px;min-width:44px;height:44px;display:grid;place-items:center}
+.beginner-sector h3{font-size:18px;margin-bottom:0}
+.beginner-sector p{font-size:13px;flex:1;color:#657467;line-height:1.7}
+.beginner-sector-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-top:10px}
+.beginner-sector-actions label{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;min-height:44px}
+.beginner input[type=checkbox]{width:18px;height:18px;flex:0 0 18px;accent-color:#244d39;margin:0}
+.beginner-current{margin-top:14px;color:#466b2a}
+.beginner .btn{min-height:44px;border-radius:12px;padding:12px 18px;white-space:normal;text-align:center}
+.beginner .btn.light{background:#f3f6ed;border:1px solid #dce4d4}
+.beginner .actions{gap:12px;display:flex;align-items:center;flex-wrap:wrap}
+.beginner-detail-head{display:flex;justify-content:space-between;gap:24px;align-items:center;margin-bottom:22px}
+.beginner-detail-head h2{font-size:28px;margin:10px 0}
+.beginner-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.beginner-overview .card+.card{margin-top:0}
+.beginner-overview p{font-size:14px;margin-bottom:0}
+.beginner-tag{font-size:10px;font-weight:800;letter-spacing:.07em;color:#55723f}
+.beginner-economy{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:22px;align-items:start}
+.beginner fieldset{border:0;min-width:0;padding:0;margin:0}
+.beginner-fields{display:grid;gap:16px}
+.beginner-fields label,.beginner-text{display:flex;flex-direction:column;gap:8px;font-size:13px;font-weight:600}
+.beginner-text{margin:18px 0}
+.beginner-metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
+.beginner-metric{background:#f2f5ed;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px;overflow-wrap:anywhere}
+.beginner-metric small{font-size:12px;color:#657467}
+.beginner-metric strong{font-size:clamp(20px,2vw,27px);font-weight:600}
+.beginner .negative{color:#a44736}
+.beginner-metric.negative{background:#fbede6}
+.beginner .tablewrap{overflow:auto;max-width:100%;border:1px solid var(--bg-border);border-radius:12px;margin:16px 0}
+.beginner table{width:100%;border-collapse:collapse;font-size:12px}
+.beginner th,.beginner td{padding:12px 14px;text-align:left;white-space:nowrap;border-bottom:1px solid #e5eadd}
+.beginner th{font-weight:600;background:#f3f6ed}
+.beginner .wrap{white-space:normal;min-width:150px;line-height:1.65}
+.beginner svg{display:block;width:100%;height:auto;min-width:0;margin:4px 0 18px}
+.beginner svg text{font-family:inherit;font-size:11px;fill:#657467}
+.beginner-legend{display:flex;align-items:center;gap:8px;font-size:12px}
+.beginner-legend i{height:10px;width:10px;border-radius:3px;background:#244d39}
+.beginner-legend i+i,.beginner-legend i:nth-of-type(2){background:#b3c994;margin-left:16px}
+.beginner-warning{background:#fff0df;border:1px solid #e9c59b;border-radius:12px;padding:14px;color:#80502a;font-size:13px}
+.beginner-next{display:flex;justify-content:flex-end;margin:24px 0}
+.beginner-launch{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);gap:22px;align-items:start}
+.beginner progress{display:block;width:100%;height:8px;border:0;border-radius:9px;overflow:hidden;accent-color:#466b2a;background:#e6eddc}
+.beginner progress::-webkit-progress-bar{background:#e6eddc}
+.beginner progress::-webkit-progress-value{background:#466b2a}
+.beginner-check{display:flex;align-items:flex-start;gap:14px;padding:18px 0;border-bottom:1px solid #e5eadd;cursor:pointer}
+.beginner-check input{margin-top:3px!important}
+.beginner-check b{font-size:14px}
+.beginner-check small{display:block;font-size:12px;color:#657467;line-height:1.65;margin-top:6px}
+.beginner-pilot{background:#edf3e2;border-radius:14px;padding:20px;margin:24px 0}
+.beginner-pilot p{margin-bottom:0;font-size:14px}
+.beginner li{line-height:1.7;margin-bottom:9px}
+.beginner-coach{background:#f8faef!important;border-color:#c8d6b8!important}
+.beginner-coach-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:15px;background:#d2eeaa;color:#244d39;font-size:30px;margin-bottom:20px}
+.beginner-coach>.btn{display:block;width:100%;margin-top:14px}
+.beginner-coach>small{display:block;font-size:12px;line-height:1.65;color:#657467;margin-top:20px}
+.beginner-report{font-size:13px;border-top:1px solid #c8d6b8;margin-top:18px}
+.beginner-thread article{background:#fff;border:1px solid #dce2d7;border-radius:12px;padding:14px;margin:14px 0;font-size:13px;overflow-wrap:anywhere}
+.beginner-thread p{white-space:pre-wrap}
+.beginner details{margin-top:20px}
+.beginner summary{cursor:pointer;min-height:40px;font-weight:600;font-size:13px;line-height:1.7}
+.beginner-switch{max-width:650px}
+.beginner-switch>span{display:block;font-size:45px;color:#244d39}
+.beginner-switch .actions{display:flex;flex-wrap:wrap;gap:14px;margin-top:24px}
+.beginner-switch p{line-height:1.7}
+@media(max-width:1250px){.beginner-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.beginner-economy{grid-template-columns:290px minmax(0,1fr)}.beginner-launch{grid-template-columns:minmax(0,1fr)}.beginner-hero-mark{flex-basis:110px;width:110px;height:110px;font-size:55px}.beginner-hero-mark small{font-size:10px}}
+@media(max-width:1000px){.beginner-economy{grid-template-columns:minmax(0,1fr)}.beginner-fields{grid-template-columns:1fr 1fr}.beginner-overview{grid-template-columns:minmax(0,1fr)}.beginner-detail-head{align-items:flex-start;flex-direction:column}}
+@media(max-width:600px){.beginner .card{padding:20px;border-radius:18px}.beginner-hero{padding:26px 22px;border-radius:20px}.beginner-hero h1{font-size:29px}.beginner-hero-mark{display:none}.beginner-hero p{font-size:13px}.beginner-steps{gap:7px;margin:16px 0 22px}.beginner-steps button{padding:12px 8px;font-size:11px;flex-direction:column;align-items:flex-start;gap:8px}.beginner-steps span{padding:4px;font-size:10px}.beginner-grid{grid-template-columns:minmax(0,1fr)}.beginner-filters{grid-template-columns:1fr}.beginner-detail-head h2{font-size:24px}.beginner-fields{grid-template-columns:1fr}.beginner-metric{padding:14px}.beginner-metric strong{font-size:20px}.beginner-metric small{font-size:11px}.beginner .sectiontitle .btn{width:100%}.beginner .actions .btn{flex:1}.beginner th,.beginner td{padding:10px}.beginner-switch .actions .btn{width:100%}}

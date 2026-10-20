@@ -6,6 +6,8 @@ require_once __DIR__.'/social.php';
 require_once __DIR__.'/image-generation.php';
 require_once __DIR__.'/cloud-text.php';
 require_once __DIR__.'/idea-studio.php';
+require_once __DIR__.'/announcements.php';
+require_once __DIR__.'/beginner.php';
 function appSchema($pdo): void {
     static $ready; $ready ??= new WeakMap();
     if (isset($ready[$pdo])) return;
@@ -22,6 +24,8 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS aulieata_coop_members (id BIGINT UNSIGNED
     cloudTextSchema($pdo);
     ideaSchema($pdo);
     catalogDataSchema($pdo);
+    announcementSchema($pdo);
+    beginnerSchema($pdo);
     opsSchema($pdo);
     $ready[$pdo] = true;
 }

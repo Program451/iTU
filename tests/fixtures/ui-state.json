@@ -1,0 +1,204 @@
+{
+  "boot": {
+    "profile": {
+      "type": "cafe",
+      "label": "Кафе и рестораны",
+      "promotion": {
+        "goal": "requests",
+        "tone": "friendly",
+        "language": "ru",
+        "theme": "cream",
+        "audience": "",
+        "cta": ""
+      },
+      "modules": [
+        "operations",
+        "dashboard",
+        "catalog",
+        "clients",
+        "inbox",
+        "sales",
+        "marketing",
+        "finance",
+        "reputation",
+        "legal",
+        "hr",
+        "documents",
+        "knowledge",
+        "archives",
+        "settings",
+        "grants",
+        "agent",
+        "automations",
+        "opportunities",
+        "sector",
+        "bookings",
+        "toi",
+        "b2b"
+      ]
+    },
+    "business_types": {
+      "cafe": "Кафе и рестораны",
+      "toyhana": "Тойхана и банкеты",
+      "fashion": "Одежда и обувь",
+      "jewelry": "Украшения и подарки",
+      "cosmetics": "Косметика",
+      "beauty": "Салон красоты",
+      "gadgets": "Электроника и ремонт",
+      "home": "Мебель",
+      "kids": "Детские товары и садики",
+      "flowers": "Цветы и праздники",
+      "fitness": "Фитнес",
+      "auto": "Автосервис",
+      "grocery": "Продуктовый магазин",
+      "medical": "Аптеки и клиники",
+      "edu": "Образование",
+      "it": "IT и Digital",
+      "print": "Полиграфия",
+      "sewing": "Ателье",
+      "repair": "Строительство и ремонт",
+      "realty": "Недвижимость",
+      "entertainment": "Досуг",
+      "pets": "Зоотовары и ветеринария",
+      "garden": "Агробизнес",
+      "logistics": "Логистика",
+      "finance": "Бухгалтерия и юристы",
+      "industry": "Производство",
+      "tenders": "Тендеры",
+      "services": "Бытовые услуги"
+    },
+    "promotion_options": {
+      "goal": {
+        "requests": "Больше обращений",
+        "awareness": "Знакомство с бизнесом",
+        "loyalty": "Повторные обращения"
+      },
+      "tone": {
+        "friendly": "Дружелюбно",
+        "expert": "Деловито и по делу",
+        "simple": "Просто и кратко"
+      },
+      "language": {
+        "ru": "Русский",
+        "kk": "Қазақша"
+      },
+      "theme": {
+        "forest": "Лесной зелёный",
+        "cream": "Тёплый минимализм",
+        "night": "Ночной индиго"
+      }
+    },
+    "csrf": "local-test-token",
+    "biz": "Interface fixture",
+    "location": "Тараз",
+    "telegram_username": null
+  },
+  "state": {
+    "tiktok": {
+      "configured": false,
+      "client_key": "",
+      "redirect_uri": "http://127.0.0.1:8187/tiktok-callback.php",
+      "connection": null,
+      "requested_scopes": [
+        "user.info.basic"
+      ]
+    },
+    "instagram": null,
+    "connection": null,
+    "jobs": [],
+    "worker_last_seen": false,
+    "automation_logs": [],
+    "tasks": [],
+    "agent_plans": [],
+    "stock_batches": [],
+    "business_capacity": [],
+    "promotion_drafts": [],
+    "business_signals": [],
+    "sector_kit": {
+      "title": "Кафе и рестораны",
+      "ideas": [
+        "Наборы из позиций с близким сроком",
+        "Загрузка столов в спокойные часы",
+        "Проверка маржи блюд"
+      ],
+      "stock": true
+    },
+    "profile": {
+      "type": "cafe",
+      "label": "Кафе и рестораны",
+      "promotion": {
+        "goal": "requests",
+        "tone": "friendly",
+        "language": "ru",
+        "theme": "cream",
+        "audience": "",
+        "cta": ""
+      },
+      "modules": [
+        "operations",
+        "dashboard",
+        "catalog",
+        "clients",
+        "inbox",
+        "sales",
+        "marketing",
+        "finance",
+        "reputation",
+        "legal",
+        "hr",
+        "documents",
+        "knowledge",
+        "archives",
+        "settings",
+        "grants",
+        "agent",
+        "automations",
+        "opportunities",
+        "sector",
+        "bookings",
+        "toi",
+        "b2b"
+      ]
+    },
+    "catalog": [],
+    "bookings": [],
+    "clients": [],
+    "expenses": [],
+    "documents": [],
+    "knowledge": [],
+    "offers": [],
+    "history": [],
+    "archives": [],
+    "telegram_messages": [],
+    "market": [],
+    "my_publications": [],
+    "coop_members": []
+  },
+  "ops": {
+    "role": "owner",
+    "orders": [],
+    "resources": [],
+    "appointments": [],
+    "tickets": [],
+    "shifts": [],
+    "passports": [],
+    "staff": [],
+    "settings": {
+      "bot_mode": "ai",
+      "orders_enabled": false,
+      "bookings_enabled": false,
+      "auto_confirm_booking": false,
+      "pickup_note": "",
+      "feedback_title": "Расскажите, как прошло посещение",
+      "reminder_hours": 24
+    },
+    "audit": [],
+    "batches": [],
+    "suppliers": [],
+    "campaigns": [],
+    "imports": [],
+    "plans": [],
+    "demands": [],
+    "outbox": []
+  }
+}

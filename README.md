@@ -8,7 +8,7 @@
 
 Автор: **Акимов Алимжан** · Репозиторий: **iTU**
 
-[Открыть приложение](https://itudron.ru/) · [Презентация для хакатона](docs/presentation/AulieAta-AI-Digital-Taraz-pitch.pdf) · [Установка](docs/SETUP.md) · [История разработки и проверок](docs/DEVELOPMENT-STATUS.md)
+[Открыть приложение](https://itudron.ru/) · [Презентация для хакатона](docs/presentation/AulieAta-AI-Digital-Taraz-pitch.pdf) · [Установка](docs/SETUP.md) · [История разработки и проверок](docs/DEVELOPMENT-STATUS.md) · [Переводы и объявления администратора](docs/ANNOUNCEMENTS-AND-TRANSLATIONS.md)
 
 ---
 
@@ -147,6 +147,7 @@ npm test
 - [Презентация для Digital Taraz Hackathon](docs/presentation/AulieAta-AI-Digital-Taraz-pitch.pdf)
 - [Обзор проекта в PDF](docs/presentation/AulieAta-AI-project.pdf)
 - [Установка и подключения](docs/SETUP.md)
+- [Режим «Новичок в бизнесе»](docs/BEGINNER-GUIDE.md)
 - [История разработки](docs/DEVELOPMENT-STATUS.md)
 - [Сведения о сторонних компонентах](THIRD_PARTY_NOTICES.md)
 

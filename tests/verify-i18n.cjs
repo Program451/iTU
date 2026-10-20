@@ -1,0 +1,40 @@
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const {JSDOM}=require('jsdom');
+const root=path.resolve(__dirname,'..'),read=name=>fs.readFileSync(path.join(root,'public',name),'utf8');
+const fixture=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/ui-state.json'),'utf8'));
+fixture.boot.business_presets=JSON.parse(read('business-presets.json'));
+function setup(html,language='kk'){
+ const dom=new JSDOM(html,{url:'http://localhost/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
+ w.localStorage.setItem('aulieata.lang',language);w.scrollTo=()=>{};w.confirm=()=>true;
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};w.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new w.Event('close'));};
+ const run=code=>vm.runInContext(code,dom.getInternalVMContext());
+ run(read('i18n-catalog.js'));run(read('i18n.js'));
+ return {dom,w,run};
+}
+(async()=>{
+ const simple=setup('<p data-i18n>Сохранить</p><input value="Сохранить" placeholder="Ваш пароль" data-i18n-placeholder>');
+ simple.w.I18n.apply();assert.equal(simple.w.document.querySelector('p').textContent,'Сақтау');assert.equal(simple.w.document.querySelector('input').value,'Сохранить');assert.equal(simple.w.document.querySelector('input').placeholder,'Құпиясөзіңіз');simple.w.I18n.set('ru');assert.equal(simple.w.document.querySelector('p').textContent,'Сохранить');simple.w.I18n.set('kk');assert.equal(simple.w.document.querySelector('p').textContent,'Сақтау');
+ const fragment=simple.w.I18n.html('<button onclick="save(\'Сохранить\')" value="Сохранить">Сохранить</button>');assert(fragment.includes('>Сақтау</button>'));assert(fragment.includes('value="Сохранить"'));assert(fragment.includes("save('Сохранить')"));simple.dom.window.close();
+ let source=read('index.php').replace(/<\?php readfile\(__DIR__\.'\/([^']+)'\); \?>/g,(_,name)=>read(name));source=source.slice(source.indexOf('<!doctype'));
+ source=source.replace(/<\?php echo json_encode\(\$boot,[\s\S]*?\?>/,JSON.stringify(fixture.boot));
+ const {dom,w,run}=setup(source);
+ w.fetch=async(url,options)=>{const action=JSON.parse(options.body).action;return {ok:true,json:async()=>structuredClone(action==='load'?fixture.state:action==='ops_load'?fixture.ops:{items:[],posts:[],batches:[],runs:[]})};};
+ run(read('qr-local.js'));for(const script of w.document.querySelectorAll('script:not([src])'))run(script.textContent);
+ await new Promise(resolve=>setTimeout(resolve,10));
+ // Rendering tests have no network/canvas dependency. Browser tests exercise the actual mounts.
+ run('socialMount=()=>{};serviceMount=()=>{};imageAiMount=()=>{};ideaMount=()=>{};socialPlanMount=()=>{};socialDraw=()=>{};');
+ const knownKazakh=new Set(run('modules.map(m=>m[3])'));const longLabels=Object.keys(w.I18n.catalog).filter(key=>key.length>35&&!/[әғқңөұүһі]/i.test(key)&&w.I18n.catalog[key]!==key);
+ function assertLocalized(screen){const walker=w.document.createTreeWalker(w.document.getElementById('content'),w.NodeFilter.SHOW_TEXT),missing=[];let node;while(node=walker.nextNode()){const text=node.textContent.replace(/\s+/g,' ').trim();if(!knownKazakh.has(text)&&w.I18n.catalog[text]&&w.I18n.catalog[text]!==text)missing.push(text);for(const key of longLabels)if(text.includes(key))missing.push(key);}assert.deepEqual([...new Set(missing)],[],screen+' has untranslated interface labels');}
+ for(const route of run('modules.map(m=>m[0])')){w.location.hash=route;run('render()');assertLocalized(route);}
+ for(const tab of run('Object.keys(opsTabs)')){w.location.hash='operations';run('opsTab='+JSON.stringify(tab)+';render()');assertLocalized('operations/'+tab);}
+ w.location.hash='sales';run('render()');const prompt=w.document.getElementById('f_prompt');prompt.value='Сохранить <script>мой текст</script>';const task=w.document.getElementById('f_task');task.selectedIndex=1;const taskValue=task.value;assert.equal(w.document.documentElement.lang,'kk');run("lastResult='Авторский ответ';lastTitle='Мой документ';$('aiResult').textContent=lastResult;setLang('ru');");assert.equal(w.document.getElementById('f_prompt').value,'Сохранить <script>мой текст</script>');assert.equal(w.document.getElementById('f_task').value,taskValue);assert.equal(w.document.getElementById('aiResult').textContent,'Авторский ответ');run("setLang('kk')");assert.equal(w.document.getElementById('f_task').value,taskValue);assert.equal(w.localStorage.getItem('aulieata.lang'),'kk');
+ run("state.catalog=[{id:123,item_name:'Сохранить',item_price:1200,item_cost:500,units_sold:0,category:'Обновление',details:{business_type:'cafe',availability:'available',description:'Профиль <script>raw</script>'}}];opsState.staff=[{id:3,name:'Сохранить',active:1}]");
+ w.location.hash='catalog';run('render()');assert(w.document.querySelector('tbody').textContent.includes('Сохранить'));assert(w.document.querySelector('tbody').textContent.includes('Обновление'));assert.equal(w.document.querySelectorAll('tbody script').length,0);
+ const selectHtml=run("opsSelect('person','Имя',opsStaffOptions())");const selectDom=new JSDOM(selectHtml);assert.equal(selectDom.window.document.querySelector('option[value="3"]').textContent,'Сохранить');selectDom.window.close();
+ const markup=run("announcementMarkup({kind:'welcome',title_ru:'Title',title_kk:'<script>bad()</script>',body_ru:'Text',body_kk:'<img src=x onerror=bad()>',media_id:'abcdef'},{preview:true})");const markupDom=new JSDOM(markup);assert.equal(markupDom.window.document.querySelectorAll('script,img').length,0);assert(markupDom.window.document.querySelector('video').hasAttribute('controls'));assert(!markupDom.window.document.querySelector('video').hasAttribute('autoplay'));markupDom.window.close();
+ run("announcementShow({id:99,kind:'update',title_ru:'Test',title_kk:'Тексеру',body_ru:'Text',body_kk:'Мәтін'},{pending:true})");w.fetch=async()=>({ok:false,json:async()=>({error:'service_unavailable'})});w.document.querySelector('.announcement-done').click();await new Promise(r=>setTimeout(r,5));assert.equal(w.document.getElementById('announcementDialog').open,true,'Failed receipt must leave popup open');assert(w.document.querySelector('.announcement-error').textContent);w.fetch=async()=>({ok:true,json:async()=>({ok:true})});w.document.querySelector('.announcement-done').click();await new Promise(r=>setTimeout(r,5));assert.equal(w.document.getElementById('announcementDialog').open,false);
+ dom.window.close();
+ // Login and registration translate in place, preserving the active tab and entered values.
+ let login=read('login.php');login=login.slice(login.indexOf('<!doctype')).replace(/<\?php[\s\S]*?\?>/g,'');const loginDom=setup(login);for(const script of loginDom.w.document.querySelectorAll('script:not([src])'))loginDom.run(script.textContent);await new Promise(r=>setTimeout(r,5));loginDom.run('switchTab(true)');loginDom.w.document.getElementById('biz').value='Сохранить';loginDom.run("loginLang('ru');loginLang('kk')");assert.equal(loginDom.w.document.getElementById('heading').textContent,'Жұмыс кеңістігін құрыңыз');assert.equal(loginDom.w.document.getElementById('biz').value,'Сохранить');assert(!loginDom.w.document.getElementById('registerForm').classList.contains('hidden'));assert.equal(loginDom.w.document.getElementById('location').value,'г. Тараз');loginDom.run("togglePassword('password');loginLang('ru');loginLang('kk')");assert.equal(loginDom.w.document.querySelector('.password button').textContent,loginDom.w.I18n.t('Скрыть'));assert.equal(loginDom.w.document.getElementById('password').type,'text');assert(!loginDom.w.document.querySelector('.story p').textContent.includes('Продажи'));loginDom.dom.window.close();
+ console.log('PASS: RU/KK on 23 modules and 15 operation tabs; language persistence, form values, option contracts, original user content, escaped announcement text, failed/retried acknowledgement, login and registration.');
+})().catch(error=>{console.error(error);process.exitCode=1});

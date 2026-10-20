@@ -8,6 +8,7 @@ return [
     'db_user' => '',
     'db_pass' => '',
     'gemini_key' => '',
+    'gemini_model' => 'gemini-3.8-flash', // Beginner mentor; optional GEMINI_MODEL environment override when empty.
     'telegram_token' => '', // Optional legacy bot; use per-business connections in the app.
     'telegram_username' => '',
     'owner_phone' => '', // Optional legacy routing; never put a real phone in this example.

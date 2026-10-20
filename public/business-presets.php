@@ -16,7 +16,7 @@ function businessPromotionDefaults(string $type): array {
 }
 function businessProfileInput(array $data, array $previous): array {
     $type=$data['type']??null;
-    if(!is_string($type)||!isset(businessPresets()[$type]))throw new RuntimeException('Выберите сферу бизнеса');
+    if(!is_string($type)||($type!=='beginner'&&!isset(businessPresets()[$type])))throw new RuntimeException('Выберите сферу бизнеса');
     $out=['type'=>$type];
     foreach(['description','rules'] as $key){
         $value=$data[$key]??'';
@@ -41,6 +41,10 @@ function businessProfileInput(array $data, array $previous): array {
         $map[$type]=$p;
     }
     $out['promotion_by_type']=$map;
+    $out['details_by_type']=array_intersect_key(is_array($previous['details_by_type']??null)?$previous['details_by_type']:[],['beginner'=>true]+businessPresets());
+    $oldType=$previous['type']??$type;
+    $out['details_by_type'][$oldType]=['description'=>$previous['description']??'','rules'=>$previous['rules']??''];
+    $out['details_by_type'][$type]=['description'=>$out['description'],'rules'=>$out['rules']];
     return $out;
 }
 function businessSaveProfile(PDO $pdo, int $uid, array $data): void {
@@ -54,6 +58,7 @@ function businessSaveProfile(PDO $pdo, int $uid, array $data): void {
         $profile=businessProfileInput($data,$previous);
         $q=$pdo->prepare("UPDATE aulieata_records SET archived=1 WHERE user_id=? AND kind='profile' AND archived=0");$q->execute([$uid]);
         $q=$pdo->prepare("INSERT INTO aulieata_records(user_id,kind,payload) VALUES(?,'profile',?)");$q->execute([$uid,json_encode($profile,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
+        $q=$pdo->prepare('UPDATE users SET biz_category=? WHERE id=?');$q->execute([$profile['type'],$uid]);
         $pdo->commit();
     } catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
 }

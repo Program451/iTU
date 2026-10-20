@@ -5,6 +5,7 @@ require __DIR__.'/tiktok-api.php';
 require __DIR__.'/social-api.php';
 require __DIR__.'/image-ai-api.php';
 require __DIR__.'/idea-api.php';
+require __DIR__.'/beginner-api.php';
 if(!isset($pdo,$uid,$in,$action)){http_response_code(404);exit;}
 require __DIR__.'/opportunities-api.php';
 require __DIR__.'/catalog-api.php';
