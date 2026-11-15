@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/instagram-tokens.php';
 /** Instagram Login connection. Tokens never leave the server after saving. */
 class InstagramConnectionError extends RuntimeException {
     public bool $invalidToken;
@@ -16,6 +17,7 @@ function instagramSchema(PDO $pdo): void {
         quota_duration INT NULL, quota_checked_at DATETIME NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    instagramRefreshSchema($pdo);
 }
 
 function instagramRequest(string $token, string $path, array $params = []): array {
@@ -104,6 +106,7 @@ function instagramConnect(PDO $pdo, int $uid, array $cfg, string $token, ?callab
             $q->execute([$profile['username'],$profile['account_type'],$box,$now,$profile['quota_usage'],
                 $profile['quota_total'],$profile['quota_duration'],$profile['quota_total'] === null ? null : $now,$uid]);
         }
+        instagramRefreshSchedule($pdo,$uid,$box);
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
