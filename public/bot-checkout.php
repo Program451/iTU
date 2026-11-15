@@ -1,5 +1,22 @@
 <?php
 /** Fill only customer-supplied fields; execution stays behind the final confirmation. */
+function botBookingIntent(array $catalog,array $resources,string $text,array $state): ?array {
+    if(!preg_match('/запи[сш]|брон|жазыл/iu',$text)&&empty($state['booking_request']))return null;
+    $serviceIds=[];foreach($resources as $r)foreach($r['services']??[] as $id)$serviceIds[(int)$id]=true;
+    $matches=array_values(array_filter(botMatches($catalog,$text),fn($x)=>isset($serviceIds[(int)$x['id']])));
+    $item=count($matches)===1?(int)$matches[0]['id']:0;
+    if(!$item&&!$matches)$item=(int)($state['booking_request']['items'][0]['item_id']??0);
+    if(!$item)return null;$options=array_values(array_filter($resources,fn($r)=>in_array($item,$r['services']??[],true)));
+    if(count($options)!==1)return null;
+    $now=new DateTimeImmutable('now',new DateTimeZone('Asia/Qyzylorda'));$date='';
+    if(preg_match('/\b(\d{4}-\d{2}-\d{2})\b/u',$text,$m)&&validBusinessDate($m[1]))$date=$m[1];
+    elseif(preg_match('/послезавтра|бүрсігүні/iu',$text))$date=$now->modify('+2 days')->format('Y-m-d');
+    elseif(preg_match('/завтра|ертең/iu',$text))$date=$now->modify('+1 day')->format('Y-m-d');
+    elseif(preg_match('/сегодня|бүгін/iu',$text))$date=$now->format('Y-m-d');
+    else $date=substr($state['booking_request']['starts_at']??'',0,10);
+    if(!validBusinessDate($date)||!preg_match('/(?<!\d)([01]?\d|2[0-3]):([0-5]\d)(?!\d)/u',$text,$m))return null;
+    return ['intent'=>'booking','items'=>[['item_id'=>$item,'quantity'=>1]],'resource_id'=>(int)$options[0]['id'],'starts_at'=>$date.' '.str_pad($m[1],2,'0',STR_PAD_LEFT).':'.$m[2].':00'];
+}
 function botCustomerFields(string $text,string $step='',?array $extracted=null): array {
     $out=[];
     if(preg_match('/(?:меня зовут|имя\s*[:—-]?|атым)\s+([\p{L}][\p{L}\s-]{1,60}?)(?=[,;.\n]|\s+(?:телефон|номер|заберу|алып)|$)/iu',$text,$m))$out['client']=trim($m[1]);
