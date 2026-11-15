@@ -33,6 +33,7 @@ if($_SERVER['REQUEST_METHOD']!=='POST')out(['error'=>'Используйте POS
 if(!hash_equals($_SESSION['csrf'],$_SERVER['HTTP_X_CSRF_TOKEN']??''))out(['error'=>'Сессия обновилась. Перезагрузите страницу.'],403);
 $in=json_decode(file_get_contents('php://input'),true);if(!is_array($in))out(['error'=>'Некорректный запрос'],400);
 $action=$in['action']??'';
+require __DIR__.'/review-api.php';
 if(in_array($action,['analyze_import','agent_plan','promotion_generate'])&&time()-($_SESSION['platform_ai']??0)<4)out(['error'=>'Подождите несколько секунд'],429);if(in_array($action,['analyze_import','agent_plan']))$_SESSION['platform_ai']=time();
 try{require __DIR__.'/platform-api.php';}catch(RuntimeException $e){if($e instanceof PDOException)throw $e;if($pdo->inTransaction())$pdo->rollBack();out(['error'=>$e->getMessage()],422);}
 if($action==='load'){
@@ -320,6 +321,7 @@ function sectorAgent(topic){sessionStorage.setItem('aulieata.agentPrompt','Ра�
 <?php readfile(__DIR__.'/tiktok-ui.js'); ?>
 <?php readfile(__DIR__.'/social-ui.js'); ?>
 <?php readfile(__DIR__.'/service-ui.js'); ?>
+<?php readfile(__DIR__.'/review-ui.js'); ?>
 <?php readfile(__DIR__.'/image-ai-ui.js'); ?>
 <?php readfile(__DIR__.'/idea-ui.js'); ?>
 <?php readfile(__DIR__.'/publication-ui.js'); ?>

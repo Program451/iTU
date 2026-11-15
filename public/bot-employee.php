@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/bot-checkout.php';
 /** Customer actions are validated by the same commerce and appointment services as the web app. */
 function opsBotHandle($pdo,$owner,$chat,$text,$cfg,$sourceId=0){
     $key='bot-chat-'.substr(hash('sha256',$owner['id'].':'.$chat),0,40);
@@ -30,7 +31,7 @@ function botEmployeeOrderIntent(array $catalog,string $text,array $state): ?arra
     if($remove||preg_match('/^(?:добавь|добавьте|тағы)/iu',trim($text))){$old=[];foreach($state['pending']['data']['items']??[] as $x)$old[(int)$x['item_id']]=$x['quantity'];foreach($lines as $id=>$qty){if($remove)unset($old[$id]);else $old[$id]=($old[$id]??0)+$qty;}$lines=$old;}
     return ['intent'=>'order','items'=>array_map(fn($id,$q)=>['item_id'=>$id,'quantity'=>$q],array_keys($lines),array_values($lines))];
 }
-function botEmployeeTurn(PDO $pdo,int $uid,string $chat,string $text,array &$state,array $catalog): ?array {
+function botEmployeeTurn(PDO $pdo,int $uid,string $chat,string $text,array &$state,array $catalog,array $cfg=[]): ?array {
     $kk=botKk($text);$t=trim($text);$settings=opsSettings($pdo,$uid);
     if(preg_match('/^(?:отмена|отменить|не надо|жоқ|бас тарту)[.!\s]*$/iu',$t)||preg_match('/сотрудник|оператор|администратор|человек|жалоб|возврат|қызметкер|менеджер/iu',$t))return null;
     if(preg_match('/(?:статус|где|мои|мой).{0,15}заказ|тапсырыс(?:ым|тың күйі)/iu',$t))return ['reply'=>botOrderStatus($pdo,$uid,$chat,$kk)];
@@ -43,23 +44,8 @@ function botEmployeeTurn(PDO $pdo,int $uid,string $chat,string $text,array &$sta
         $edit=botEmployeeOrderIntent($catalog,$text,$state);
         if($edit){if(empty($edit['items'])&&empty($edit['clarification'])){unset($state['pending'],$state['checkout_step']);opsSaveChat($pdo,$uid,$chat,$state);return ['reply'=>$kk?'Себет бос.':'Корзина очищена.'];}return ['intent'=>$edit];}
     }
-    // Collect only details explicitly supplied by this customer; never ask the language model to invent them.
-    if(!empty($state['checkout_step'])&&!empty($state['pending'])){
-        if(($state['pending']['expires']??0)<time()){unset($state['checkout_step'],$state['pending']);opsSaveChat($pdo,$uid,$chat,$state);return ['reply'=>$kk?'Ұсыныстың уақыты өтті. Тапсырысты қайталаңыз.':'Предложение устарело. Повторите заказ для проверки цены и наличия.'];}
-        $step=$state['checkout_step'];$skip=preg_match('/^(?:пропустить|без телефона|өткізу)$/iu',$t);
-        if($step==='name'){
-            if(mb_strlen($t)<2||mb_strlen($t)>70||preg_match('/\d|подтверж|^да$|\?|заказ|добав|убери/iu',$t))return ['reply'=>$kk?'Сізге қалай жүгінуге болады? Атыңызды жазыңыз.':'Как к вам обращаться? Напишите имя, например «Алимжан».'];
-            $state['pending']['data']['client']=$t;$state['checkout_step']='phone';$reply=$kk?'Байланыс телефоныңыз? Қаламасаңыз «Өткізу» деп жазыңыз — осы чат арқылы байланысамыз.':'Телефон для связи? Можно написать «Пропустить» — тогда связь останется в этом чате.';
-        }elseif($step==='phone'){
-            $digits=preg_replace('/\D/','',$t);if(!$skip&&(strlen($digits)<10||strlen($digits)>15))return ['reply'=>$kk?'Телефон нөмірін немесе «Өткізу» деп жазыңыз.':'Напишите номер телефона или «Пропустить».'];
-            $state['pending']['data']['phone']=$skip?'':$digits;$state['checkout_step']='pickup';$reply=$kk?'Алу уақыты немесе тапсырысқа ескерту? Қажет болмаса «Өткізу».':'Когда удобно получить заказ? Можно добавить пожелание или написать «Пропустить». Это пожелание, точное время выдачи подтвердит сотрудник.';
-        }else{
-            $state['pending']['data']['pickup_at']=$skip?'':opsText($t,180);unset($state['checkout_step']);
-            $q=opsQuote($pdo,$uid,$state['pending']['data']['items'],$state['pending']['data']['campaign_code']??'');$state['pending']['data']['quote_hash']=$q['hash'];
-            $reply=opsQuoteText($q,$kk)."\n".$state['pending']['data']['client'].($state['pending']['data']['pickup_at']?"\n".$state['pending']['data']['pickup_at']:'').(!empty($settings['pickup_note'])?"\n".$settings['pickup_note']:'')."\n".($kk?'«Растаймын» деп жазыңыз.':'Напишите «Подтверждаю». После этого создам заказ.');
-        }
-        opsSaveChat($pdo,$uid,$chat,$state);return ['reply'=>$reply];
-    }
+    $collected=botCheckoutCollect($pdo,$uid,$chat,$text,$state,$cfg);
+    if($collected!==null)return ['reply'=>$collected];
     // A menu-driven booking works even when the external model quota is exhausted.
     if(!empty($state['booking_flow'])||preg_match('/^(?:записаться|хочу записаться|запись|бронь|жазылу)[.!\s]*$/iu',$t)){
         if(!$settings['bookings_enabled'])return ['reply'=>$kk?'Жазылу әлі қосылмаған. Қызметкерге жазыңыз.':'Запись ещё не включена владельцем. Напишите «Нужен сотрудник».'];
