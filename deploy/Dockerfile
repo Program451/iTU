@@ -8,6 +8,7 @@ COPY public/ public/
 COPY database/ database/
 COPY tools/ tools/
 COPY tests/ tests/
+COPY deploy/initialize.php deploy/initialize.php
 COPY deploy/apache.conf /etc/apache2/sites-available/000-default.conf
 COPY deploy/php.ini /usr/local/etc/php/conf.d/aulieata.ini
 RUN mkdir -p /var/www/app/aulieata-media && chown www-data:www-data /var/www/app/aulieata-media \
