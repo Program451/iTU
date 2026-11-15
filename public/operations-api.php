@@ -13,6 +13,12 @@ if(str_starts_with($action,'ops_')){
     if($action==='ops_bot_preview'){
         $text=opsText($d['text']??'',1000);if(!$text)throw new RuntimeException('Напишите вопрос');
         $catalog=publicCatalogData($pdo,$uid,$text);$reply=botQuickAnswer($pdo,$uid,$text,$catalog);
+        if($reply===null&&(opsSettings($pdo,$uid)['bot_mode']??'free')==='ai'){
+            opsRateLimit($pdo,'bot-preview:'.$uid,20,3600);session_write_close();
+            $owner=opsOne($pdo,'SELECT id,biz_name,location FROM users WHERE id=?',[$uid]);
+            $answer=opsAI($runtimeConfig,businessBotSystem($pdo,$owner,$catalog,$text).' Это предпросмотр: никаких действий, заказов и записей не выполняется. Верни JSON {"text":"ответ клиенту"}.',$text);
+            $reply=opsText($answer['text']??'',2400)?:botUnavailable(botKk($text));
+        }
         if($reply===null&&(opsSettings($pdo,$uid)['bot_mode']??'free')==='cloud'){opsRateLimit($pdo,'bot-preview:'.$uid,20,3600);session_write_close();$intent=botCloudIntent($pdo,$uid,$text,[],$catalog,[],[],$runtimeConfig);if(($intent['intent']??'')==='order'&&!empty($intent['items']))$reply=opsQuoteText(opsQuote($pdo,$uid,$intent['items']),botKk($text))."\nПредпросмотр: заказ не создавался.";elseif(($intent['intent']??'')==='handoff')$reply='Бот предложит помощь сотрудника. В предпросмотре обращение не создаётся.';else $reply=opsText($intent['answer']??$intent['clarification']??'',2400)?:'Бот уточнит данные. Запись и заказ в предпросмотре не создаются.';}
         out(['text'=>$reply??'Для действий с заказом или записи используйте Telegram. Здесь проверяются только справочные ответы без создания записей. '.botUnavailable(botKk($text))]);
     }
