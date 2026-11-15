@@ -1,0 +1,60 @@
+name: aulieata
+services:
+  db:
+    image: mariadb:11.4
+    container_name: aulieata-db
+    restart: unless-stopped
+    env_file: /opt/aulieata/private/database.env
+    command: ["--innodb-buffer-pool-size=64M", "--max-connections=25", "--performance-schema=OFF", "--innodb-log-buffer-size=8M"]
+    volumes:
+      - database:/var/lib/mysql
+      - /opt/aulieata/private/run:/run/aulieata
+    networks: [database]
+    mem_limit: 256m
+    memswap_limit: 384m
+    cpus: 0.35
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: aulieata-web:production
+    container_name: aulieata-web
+    restart: unless-stopped
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      AULIEATA_CONFIG: /run/secrets/aulieata.php
+    volumes:
+      - /opt/aulieata/private/config.php:/run/secrets/aulieata.php:ro
+      - /opt/aulieata/private/run:/run/aulieata
+      - media:/var/www/app/aulieata-media
+    networks: [database, proxy]
+    ports: ["127.0.0.1:8189:80"]
+    mem_limit: 224m
+    memswap_limit: 384m
+    cpus: 0.50
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/login.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+networks:
+  database:
+    internal: true
+  proxy:
+    external: true
+    name: birge_default
+volumes:
+  database:
+  media:
