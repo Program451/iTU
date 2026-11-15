@@ -11,6 +11,8 @@ COPY tests/ tests/
 COPY deploy/initialize.php deploy/initialize.php
 COPY deploy/apache.conf /etc/apache2/sites-available/000-default.conf
 COPY deploy/php.ini /usr/local/etc/php/conf.d/aulieata.ini
-RUN mkdir -p /var/www/app/aulieata-media && chown www-data:www-data /var/www/app/aulieata-media \
+RUN find public database tools tests deploy -type d -exec chmod 755 {} + \
+    && find public database tools tests deploy -type f -exec chmod 644 {} + \
+    && mkdir -p /var/www/app/aulieata-media && chown www-data:www-data /var/www/app/aulieata-media \
     && a2enmod headers setenvif \
     && sed -i 's/StartServers.*/StartServers 1/; s/MinSpareServers.*/MinSpareServers 1/; s/MaxSpareServers.*/MaxSpareServers 2/; s/MaxRequestWorkers.*/MaxRequestWorkers 4/; s/MaxConnectionsPerChild.*/MaxConnectionsPerChild 200/' /etc/apache2/mods-available/mpm_prefork.conf
