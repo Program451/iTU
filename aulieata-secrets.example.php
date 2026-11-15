@@ -8,6 +8,8 @@ return [
     'db_user' => '',
     'db_pass' => '',
     'gemini_key' => '',
+    'tavily_key' => '', // Optional official-source search; keep provider pay-as-you-go disabled.
+    'tavily_users' => [], // Explicit workspace IDs; other users cannot spend this key's quota.
     'gemini_model' => 'gemini-3.8-flash', // Beginner mentor; optional GEMINI_MODEL environment override when empty.
     'telegram_token' => '', // Optional legacy bot; use per-business connections in the app.
     'telegram_username' => '',
