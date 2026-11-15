@@ -37,12 +37,12 @@ function botQuickAnswer($pdo,int $uid,string $text,array $catalog): ?string {
     foreach(businessKnowledge($pdo,$uid,true,$text) as $doc){$name=mb_strtolower($doc['name']);$score=0;foreach($words as $w)if(mb_strpos($name,$w)!==false)$score++;if($score>$bestScore){$best=$doc;$bestScore=$score;}}
     if($best&&($bestScore>=2||mb_strtolower(trim($best['name']))===$t))return opsText($best['text'],3000);
     $matches=botMatches($catalog,$text);
-    if($matches&&!preg_match('/закаж|заказ|заказать|оформ|купить|брон|запис|тапсырыс|жазыл|сатып/iu',$text))return botCatalogText(array_slice($matches,0,5),$kk);
+    if($matches&&!preg_match('/закаж|заказ|заказать|оформ|купить|хочу|дайте|возьму|мне\s+\d|брон|запи[сш]|тапсырыс|жазыл|сатып/iu',$text))return botCatalogText(array_slice($matches,0,5),$kk);
     return null;
 }
 function botLocalIntent(array $catalog,string $text): ?array {
     if(preg_match('/сотрудник|оператор|администратор|человек|жалоб|возврат|қызметкер|менеджер/iu',$text))return ['intent'=>'handoff'];
-    if(preg_match('/брон|запис|жазыл/iu',$text))return ['intent'=>'booking','clarification'=>botKk($text)?'Қызметкер жазылуға көмектеседі. «Қызметкер» деп жазыңыз.':'Для записи со свободным временем напишите «Нужен сотрудник». Он увидит запрос в кабинете.'];
+    if(preg_match('/брон|запи[сш]|жазыл/iu',$text))return ['intent'=>'booking','clarification'=>botKk($text)?'Қызметкер жазылуға көмектеседі. «Қызметкер» деп жазыңыз.':'Для записи со свободным временем напишите «Нужен сотрудник». Он увидит запрос в кабинете.'];
     if(!preg_match('/заказ|закаж|заказать|хочу купить|оформ|тапсырыс|сатып ал/iu',$text))return null;
     $matches=botMatches($catalog,$text);$exact=[];$lower=mb_strtolower($text);
     foreach($matches as $m){$name=mb_strtolower($m['item_name']);if(mb_strpos($lower,$name)!==false)$exact[]=$m;}

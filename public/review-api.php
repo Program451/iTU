@@ -1,7 +1,11 @@
 <?php
 if(!isset($pdo,$uid,$in,$action)){http_response_code(404);exit;}
-if(str_starts_with($action,'review_')||in_array($action,['assistant_demo_setup','assistant_demo_turn'],true)){
+if(str_starts_with($action,'review_')||str_starts_with($action,'gis_')||in_array($action,['assistant_demo_setup','assistant_demo_turn'],true)){
     opsStaffGate($pdo,$uid,$action,$in);
+    if($action==='gis_status')out(gisStatus($pdo,$uid));
+    if($action==='gis_connect'){opsRateLimit($pdo,'gis-connect:'.$uid,10,3600);session_write_close();out(gisConnect($pdo,$uid,(string)($in['key']??''),$runtimeConfig));}
+    if($action==='gis_search'){session_write_close();out(gisSearch($pdo,$uid,(string)($in['query']??''),$runtimeConfig));}
+    if($action==='review_manual')out(reviewManual($pdo,$uid,$in));
     if($action==='review_list')out(['reviews'=>opsRecords($pdo,$uid,'review_case'),'connected'=>false]);
     if($action==='review_examples')out(reviewExamples($pdo,$uid));
     if($action==='assistant_demo_setup')out(assistantDemoSetup($pdo,$uid));
