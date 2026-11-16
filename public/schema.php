@@ -31,5 +31,6 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS aulieata_coop_members (id BIGINT UNSIGNED
     announcementSchema($pdo);
     beginnerSchema($pdo);
     opsSchema($pdo);
+    gisSchema($pdo);
     $ready[$pdo] = true;
 }

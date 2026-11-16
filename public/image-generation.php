@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/managed-ai.php';
 /** Cloudflare Workers AI: fixed model, durable queue, no automatic retries or paid fallback. */
 const IMAGE_AI_MODEL = '@cf/black-forest-labs/flux-1-schnell';
 const IMAGE_AI_USER_LIMIT = 5;
@@ -63,6 +64,7 @@ function imageAiConnect(PDO $pdo,int $uid,array $in,array $cfg,?callable $reques
 function imageAiDisconnect(PDO $pdo,int $uid): void {
     imageAiLock($pdo,function()use($pdo,$uid){opsTx($pdo,$uid,function()use($pdo,$uid){
         opsExec($pdo,"UPDATE image_ai_connections SET active=0,token_box='' WHERE user_id=?",[$uid]);
+        opsRecord($pdo,$uid,'managed_ai',['enabled'=>false]);
         opsExec($pdo,"UPDATE image_ai_jobs SET status='cancelled',error_text='Подключение отключено.',updated_at=? WHERE user_id=? AND status='queued'",[imageAiNow(),$uid]);
     });});
 }
@@ -73,8 +75,8 @@ function imageAiUsage(PDO $pdo,int $uid,string $account): array {
     return ['used'=>$own,'limit'=>IMAGE_AI_USER_LIMIT,'remaining'=>max(0,min(IMAGE_AI_USER_LIMIT-$own,IMAGE_AI_ACCOUNT_LIMIT-$shared)),'reset_at'=>gmdate('Y-m-d',time()+86400).' 00:00:00'];
 }
 function imageAiStatus(PDO $pdo,int $uid): array {
-    $c=opsOne($pdo,'SELECT account_id,active,checked_at FROM image_ai_connections WHERE user_id=?',[$uid]);
-    return ['connected'=>!empty($c['active']),'account_id'=>$c['account_id']??'','checked_at'=>$c['checked_at']??null,'model'=>'FLUX.1 Schnell']+imageAiUsage($pdo,$uid,$c['account_id']??'');
+    $c=imageAiConnection($pdo,$uid);$managed=($c['provider']??'')==='gemini';
+    return ['connected'=>!empty($c['active']),'provider'=>$c['provider']??null,'managed'=>$managed,'account_id'=>$managed?'':($c['account_id']??''),'checked_at'=>$c['checked_at']??null,'model'=>$managed?'Gemini Image':'FLUX.1 Schnell']+imageAiUsage($pdo,$uid,$c['account_id']??'');
 }
 function imageAiSafe(array $r): array {
     return ['id'=>(int)$r['id'],'prompt'=>$r['prompt'],'status'=>$r['status'],'error'=>$r['error_text'],'created_at'=>$r['created_at'],
@@ -89,8 +91,8 @@ function imageAiQueue(PDO $pdo,int $uid,array $in): array {
     return opsTx($pdo,$uid,function()use($pdo,$uid,$key,$prompt,$hash){
         $old=opsOne($pdo,'SELECT * FROM image_ai_jobs WHERE user_id=? AND request_key=?',[$uid,$key]);
         if($old){if(!hash_equals($old['input_hash'],$hash))throw new RuntimeException('Этот запрос уже использован. Обновите список изображений.');return imageAiSafe($old);}
-        $c=opsOne($pdo,'SELECT * FROM image_ai_connections WHERE user_id=? AND active=1',[$uid]);
-        if(!$c)throw new RuntimeException('Сначала подключите Cloudflare в настройках.');
+        $c=imageAiConnection($pdo,$uid);
+        if(!$c)throw new RuntimeException('Сначала подключите генерацию изображений в настройках.');
         if(imageAiUsage($pdo,$uid,$c['account_id'])['remaining']<1)throw new RuntimeException('Дневной лимит использован. Он обновится в 05:00 по времени Казахстана.');
         if((int)opsOne($pdo,"SELECT COUNT(*) n FROM image_ai_jobs WHERE user_id=? AND status IN ('queued','processing')",[$uid])['n']>=2)throw new RuntimeException('Дождитесь выполнения текущих запросов.');
         if((int)opsOne($pdo,"SELECT COUNT(*) n FROM image_ai_jobs WHERE user_id=? AND status IN ('done','queued','processing')",[$uid])['n']>=200)throw new RuntimeException('Библиотека достигла лимита 200 изображений. Обратитесь к владельцу сервиса для расширения хранения.');
@@ -108,7 +110,7 @@ function imageAiPath(string $key): string {
 function imageAiStore(string $base64): array {
     if(strlen($base64)>11000000)throw new RuntimeException('Слишком большое изображение.');
     $raw=base64_decode($base64,true);$size=$raw!==false?@getimagesizefromstring($raw):false;
-    if(!$size||strlen($raw)>8000000||$size[0]<256||$size[1]<256||$size[0]*$size[1]>4200000||!in_array($size[2],[IMAGETYPE_JPEG,IMAGETYPE_PNG],true))throw new RuntimeException('Cloudflare вернул неподходящий файл изображения.');
+    if(!$size||strlen($raw)>8000000||$size[0]<256||$size[1]<256||$size[0]*$size[1]>4200000||!in_array($size[2],[IMAGETYPE_JPEG,IMAGETYPE_PNG],true))throw new RuntimeException('ИИ вернул неподходящий файл изображения.');
     $img=@imagecreatefromstring($raw);if(!$img)throw new RuntimeException('Не удалось прочитать изображение.');
     $key=bin2hex(random_bytes(24));$path=imageAiPath($key);$dir=dirname($path);
     if(!is_dir($dir)&&!mkdir($dir,0700,true)&&!is_dir($dir)){imagedestroy($img);throw new RuntimeException('Хранилище изображений недоступно.');}
@@ -122,14 +124,14 @@ function imageAiRun(PDO $pdo,array $cfg,?callable $request=null): int {
         opsExec($pdo,"UPDATE image_ai_jobs SET status='failed',error_text='Запуск прерван. Результат не подтверждён; автоматического повтора нет.',updated_at=? WHERE status='processing'",[imageAiNow()]);
         $job=opsOne($pdo,"SELECT * FROM image_ai_jobs WHERE status='queued' ORDER BY id LIMIT 1");if(!$job)return 0;
         $uid=(int)$job['user_id'];$id=(int)$job['id'];
-        $c=opsOne($pdo,'SELECT * FROM image_ai_connections WHERE user_id=? AND active=1',[$uid]);
+        $c=imageAiConnection($pdo,$uid,$cfg);
         if(!$c||$c['revision']!==$job['revision']){opsExec($pdo,"UPDATE image_ai_jobs SET status='cancelled',error_text='Подключение изменено.',updated_at=? WHERE id=? AND status='queued'",[imageAiNow(),$id]);return 1;}
         if(imageAiUsage($pdo,$uid,$c['account_id'])['remaining']<1){opsExec($pdo,"UPDATE image_ai_jobs SET status='failed',error_text='Дневной лимит исчерпан. Новый запрос возможен после 05:00 по времени Казахстана.',updated_at=? WHERE id=? AND status='queued'",[imageAiNow(),$id]);return 1;}
         // Atomic claim also resolves a concurrent cancel. Quota is reserved before the network call.
         if(!opsExec($pdo,"UPDATE image_ai_jobs SET status='processing',attempted_day=?,updated_at=? WHERE id=? AND status='queued'",[gmdate('Y-m-d'),imageAiNow(),$id]))return 0;
         $file=null;
         try{
-            $data=($request??'imageAiRequest')($c['account_id'],openToken($c['token_box'],$cfg),$job['prompt']);
+            $data=$c['provider']==='gemini'?managedAiImage($cfg,$job['prompt']):($request??'imageAiRequest')($c['account_id'],openToken($c['token_box'],$cfg),$job['prompt']);
             $file=imageAiStore((string)($data['image']??''));
             opsExec($pdo,"UPDATE image_ai_jobs SET status='done',image_key=?,width=?,height=?,updated_at=? WHERE id=? AND status='processing'",[$file['key'],$file['width'],$file['height'],imageAiNow(),$id]);
         }catch(Throwable $e){

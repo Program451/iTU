@@ -67,3 +67,5 @@ require_once __DIR__.'/operations-commerce.php';
 require_once __DIR__.'/operations-schedule.php';
 require_once __DIR__.'/operations-tools.php';
 require_once __DIR__.'/operations-assistant.php';
+require_once __DIR__.'/review-workbench.php';
+require_once __DIR__.'/two-gis.php';

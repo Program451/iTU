@@ -1,0 +1,10 @@
+.git
+node_modules
+output
+tmp
+*.log
+*.zip
+*.pdf
+aulieata-secrets.php
+aulieata-media
+.env*
