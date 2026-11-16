@@ -28,3 +28,13 @@ dialog[open]{animation:workspace-dialog 220ms var(--motion-ease) both}dialog[ope
 #publicationTikTok{border:1px solid #dce4d3;background:#f5f8f0;border-radius:16px;padding:22px;margin-bottom:24px}.publish-account{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:20px}.publish-options{display:grid;gap:14px;margin:20px 0}.publication-channel{margin-top:14px;padding:14px;border-radius:12px;background:#f0f5e9;overflow-wrap:anywhere}.publication-channel small{display:block;margin-top:6px}.publication-channel .actions:empty{display:none}
 @media(max-width:640px){.lesson-hero{padding:24px}.lesson-orbit{display:none}.lesson-tools{align-items:stretch}.lesson-tools>.field{min-width:100%}.publish-preview{grid-template-columns:1fr}.publish-preview>img{max-height:220px}.publish-networks{padding:14px}#publicationTikTok{padding:16px}.lesson-dialog{padding:22px}.admin-actions>.admin-btn{flex:1 1 160px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Structured review, API and demo conversation forms. */
+.review-form{display:grid;gap:12px;margin:20px 0;align-items:start}
+.review-form label{font-size:13px;font-weight:600;color:#354c40}
+.review-form input,.review-form textarea,.review-form select{box-sizing:border-box;width:100%;padding:12px 14px;border:1px solid #d5ddd2;border-radius:10px;background:#fff;color:#142b21;font:inherit;outline-offset:3px}
+.review-form textarea{min-height:100px;resize:vertical}
+.review-form button{justify-self:start}
+#gisResults .row{gap:16px;align-items:center}
+#gisResults .row a{flex-shrink:0}
+#demoReply:empty{display:none}
